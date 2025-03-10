@@ -13,6 +13,9 @@ app.config.from_object(config)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in config.ALLOWED_EXTENSIONS
 
+# Crée le dossier uploads s'il n'existe pas
+os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
+
 # Endpoint pour l'upload de fichier MP4
 @app.route('/upload', methods=['POST'])
 def upload_file():
