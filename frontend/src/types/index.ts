@@ -36,9 +36,10 @@ export interface Interaction {
 export interface Notification {
   _id: string;
   userId: string;
-  type: 'like' | 'retweet' | 'reply' | 'follow';
+  type: 'like' | 'retweet' | 'reply' | 'follow' | 'mention';
   createdAt: string;
   read: boolean;
   sourceUserId: string;
+  sourceUsername?: string;
   tweetId?: string;
 }

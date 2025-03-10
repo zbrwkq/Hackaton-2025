@@ -6,6 +6,8 @@ import { MainLayout } from './layouts/MainLayout';
 import { Feed } from './components/Feed';
 import { Settings } from './pages/Settings';
 import { Messages } from './pages/Messages';
+import { Profile } from './pages/Profile';
+import { Notifications } from './pages/Notifications';
 import { useStore } from './store/useStore';
 
 const MOCK_TWEETS = [
@@ -74,6 +76,8 @@ function App() {
             <Route index element={<Feed />} />
             <Route path="messages" element={<Messages />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="notifications" element={<Notifications />} />
           </Route>
         </Routes>
       </AnimatePresence>
