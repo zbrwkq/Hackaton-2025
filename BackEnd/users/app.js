@@ -1,30 +1,44 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-//const connectDB = require("../Database/db.config"); // Import de la connexion MongoDB
+
+//const connectDB = require("../Database/db.config");
 
 // Charger les variables d'environnement
 dotenv.config();
 
-// Connexion à MongoDB
-//connectDB();
-const mongoose = require("mongoose");
+
+ const mongoose = require("mongoose");
 
 mongoose.connect("mongodb://localhost:27017/HackatonTwitter", {});
-
-// Initialisation d'Express
+ 
 const app = express();
 
-// Middlewares
+
 app.use(express.json());
 app.use(cors({ origin: "*" }));
 
-// Importer les routes
+
+/* connectDB()
+    .then(() => console.log("✅ Service Users connecté à MongoDB"))
+    .catch(err => console.error("❌ Erreur de connexion à MongoDB :", err));
+
+app.get('/health', (req, res) => {
+    res.json({ status: 'User Service is running' });
+}); */
+
+
 const userRoutes = require("./routes/userRoutes");
 app.use("/api/users", userRoutes);
 
-// Définition du port et lancement du serveur
-const PORT = process.env.PORT;
+
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ message: "Erreur serveur", error: err.message });
+});
+
+// Démarrer le serveur
+const PORT = process.env.PORT ;
 app.listen(PORT, () => {
-  console.log(`🚀 Serveur en écoute sur http://localhost:${PORT}`);
+    console.log(`🚀 Service Users en écoute sur http://localhost:${PORT}`);
 });
