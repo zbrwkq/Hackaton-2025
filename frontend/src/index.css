@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --swipe-threshold: 50px;
+}
+
+body {
+  @apply text-gray-900 bg-gray-50;
+  overscroll-behavior-y: none;
+  font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+}
+
+.feed-container {
+  height: calc(100vh - 3.5rem);
+  overflow: hidden;
+}
+
+@layer base {
+  * {
+    @apply antialiased;
+  }
+}
+
+@layer utilities {
+  .text-shadow {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+}
