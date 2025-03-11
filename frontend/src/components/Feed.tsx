@@ -692,6 +692,25 @@ export function Feed() {
         </div>
       )}
 
+      {/* Bouton de téléchargement pour le développement */}
+      {/* {hasRecording && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <button
+            onClick={() => {
+              downloadLastRecording();
+              console.log("Téléchargement de la dernière vidéo enregistrée");
+            }}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-full shadow-lg flex items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a
+              1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+            Télécharger la vidéo
+          </button>
+        </div>
+      )} */}
+
       {/* Message d'erreur d'enregistrement */}
       {recordingError && (
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
