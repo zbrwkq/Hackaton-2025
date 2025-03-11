@@ -18,4 +18,7 @@ router.post('/:id/like', authMiddleware, tweetController.toggleLike);
 router.post('/:id/retweet', authMiddleware, tweetController.toggleRetweet);
 router.delete('/:id', authMiddleware, tweetController.deleteTweet);
 
+// Nouvelle route pour les commentaires
+router.post('/:id/comment', authMiddleware, tweetController.addComment);
+
 module.exports = router;

@@ -67,6 +67,7 @@ exports.getAllTweets = async (req, res) => {
             .populate('userId', 'username profilePicture')
             .populate('mentions', 'username profilePicture')
             .populate('likes', 'username profilePicture')
+            .populate('comments.userId', 'username profilePicture')
             .populate({
                 path: 'retweetedFrom.tweetId',
                 populate: {
@@ -328,6 +329,59 @@ exports.createRetweet = async (req, res) => {
         console.error("Erreur création retweet:", error);
         res.status(400).json({ 
             message: "Erreur lors de la création du retweet",
+            error: error.message 
+        });
+    }
+};
+
+// Ajouter un commentaire à un tweet
+exports.addComment = async (req, res) => {
+    try {
+        const tweetId = req.params.id;
+        const userId = req.user.userId;
+        const { content } = req.body;
+
+        if (!content) {
+            return res.status(400).json({ message: "Le contenu du commentaire est requis" });
+        }
+
+        const tweet = await Tweet.findById(tweetId);
+        if (!tweet) {
+            return res.status(404).json({ message: "Tweet non trouvé" });
+        }
+
+        const newComment = {
+            userId: userId,
+            content: content,
+            createdAt: new Date()
+        };
+
+        tweet.comments.push(newComment);
+        await tweet.save();
+
+        // Récupérer le tweet mis à jour avec tous les commentaires populés
+        const updatedTweet = await Tweet.findById(tweetId)
+            .populate('userId', 'username profilePicture')
+            .populate('comments.userId', 'username profilePicture')
+            .populate('mentions', 'username profilePicture')
+            .populate({
+                path: 'retweetedFrom.tweetId',
+                populate: {
+                    path: 'userId',
+                    select: 'username profilePicture'
+                }
+            })
+            .exec();
+
+        res.status(201).json({
+            message: "Commentaire ajouté avec succès",
+            tweet: updatedTweet
+        });
+
+    } catch (error) {
+        console.error("Erreur ajout commentaire:", error);
+        res.status(400).json({ 
+            message: "Erreur lors de l'ajout du commentaire",
             error: error.message 
         });
     }
