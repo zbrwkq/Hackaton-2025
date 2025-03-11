@@ -15,8 +15,9 @@ mongoose.connect("mongodb://localhost:27017/HackatonTwitter", {});
 const app = express();
 
 
-app.use(express.json());
+
 app.use(cors({ origin: "*" }));
+app.use(express.json());
 
 
 /* connectDB()
@@ -29,7 +30,7 @@ app.get('/health', (req, res) => {
 
 
 const userRoutes = require("./routes/userRoutes");
-app.use("/api/users", userRoutes);
+app.use("/users", userRoutes);
 
 
 app.use((err, req, res, next) => {

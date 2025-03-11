@@ -36,6 +36,9 @@ exports.register = async (req, res) => {
 
 // Connexion
 exports.login = async (req, res) => {
+    console.log('✅ Requête reçue sur /api/users/login');
+    console.log('📦 Corps de la requête :', req.body);
+
     try {
         const { mail, password } = req.body;
         const user = await User.findOne({ mail });
