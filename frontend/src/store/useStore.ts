@@ -77,6 +77,7 @@ interface Store {
   markAllNotificationsAsRead: () => void;
   updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
   login: (email: string, password: string) => void;
+  register: (username: string, email: string, password: string) => void;
   logout: () => void;
 }
 
@@ -120,6 +121,23 @@ export const useStore = create<Store>((set) => ({
         _id: '1',
         username: 'Demo User',
         bio: 'AI Enthusiast',
+        profilePicture: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100',
+        banner: 'https://images.unsplash.com/photo-1557683316-973673baf926?w=800',
+        followers: [],
+        following: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    });
+  },
+  register: (username, email, password) => {
+    // Mock register - in a real app this would call an API
+    set({ 
+      isAuthenticated: true,
+      currentUser: {
+        _id: '1',
+        username,
+        bio: 'New user',
         profilePicture: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100',
         banner: 'https://images.unsplash.com/photo-1557683316-973673baf926?w=800',
         followers: [],

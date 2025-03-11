@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Login } from './pages/Login';
+import { Register } from './pages/Register';
 import { MainLayout } from './layouts/MainLayout';
 import { Feed } from './components/Feed';
 import { Settings } from './pages/Settings';
@@ -256,6 +257,7 @@ function App() {
       <AnimatePresence mode="wait">
         <Routes>
           <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" />} />
+          <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/" />} />
           <Route path="/" element={isAuthenticated ? <MainLayout /> : <Navigate to="/login" />}>
             <Route index element={<Feed />} />
             <Route path="messages" element={<Messages />} />
