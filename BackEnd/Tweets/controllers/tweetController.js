@@ -68,6 +68,7 @@ exports.getAllTweets = async (req, res) => {
             .populate('mentions', 'username profilePicture')
             .populate('likes', 'username profilePicture')
             .populate('comments.userId', 'username profilePicture')
+            .populate('savedBy', 'username profilePicture')
             .populate({
                 path: 'retweetedFrom.tweetId',
                 populate: {
@@ -82,10 +83,19 @@ exports.getAllTweets = async (req, res) => {
             .sort({ createdAt: -1 })
             .exec();
 
+        // Ajouter un champ pour indiquer si le tweet est sauvegardé par l'utilisateur actuel
+        const tweetsWithSaveStatus = tweets.map(tweet => {
+            const tweetObj = tweet.toObject();
+            tweetObj.isSavedByUser = tweet.savedBy.some(
+                userId => userId.toString() === req.user.userId
+            );
+            return tweetObj;
+        });
+
         res.status(200).json({
             success: true,
             count: tweets.length,
-            tweets: tweets
+            tweets: tweetsWithSaveStatus
         });
 
     } catch (error) {
@@ -382,6 +392,210 @@ exports.addComment = async (req, res) => {
         console.error("Erreur ajout commentaire:", error);
         res.status(400).json({ 
             message: "Erreur lors de l'ajout du commentaire",
+            error: error.message 
+        });
+    }
+};
+
+// Obtenir tous les tweets que l'utilisateur a commenté
+exports.getUserCommentedTweets = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        const commentedTweets = await Tweet.find({
+            'comments.userId': userId
+        })
+        .populate('userId', 'username profilePicture')
+        .populate('comments.userId', 'username profilePicture')
+        .populate('mentions', 'username profilePicture')
+        .populate('likes', 'username profilePicture')
+        .populate({
+            path: 'retweetedFrom.tweetId',
+            populate: {
+                path: 'userId',
+                select: 'username profilePicture'
+            }
+        })
+        .sort({ createdAt: -1 })
+        .exec();
+
+        res.status(200).json({
+            success: true,
+            count: commentedTweets.length,
+            tweets: commentedTweets
+        });
+
+    } catch (error) {
+        console.error("Erreur récupération tweets commentés:", error);
+        res.status(400).json({ 
+            success: false,
+            message: "Erreur lors de la récupération des tweets commentés",
+            error: error.message 
+        });
+    }
+};
+
+// Obtenir tous les tweets que l'utilisateur a liké
+exports.getUserLikedTweets = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        const likedTweets = await Tweet.find({
+            likes: userId
+        })
+        .populate('userId', 'username profilePicture')
+        .populate('comments.userId', 'username profilePicture')
+        .populate('mentions', 'username profilePicture')
+        .populate('likes', 'username profilePicture')
+        .populate({
+            path: 'retweetedFrom.tweetId',
+            populate: {
+                path: 'userId',
+                select: 'username profilePicture'
+            }
+        })
+        .sort({ createdAt: -1 })
+        .exec();
+
+        res.status(200).json({
+            success: true,
+            count: likedTweets.length,
+            tweets: likedTweets
+        });
+
+    } catch (error) {
+        console.error("Erreur récupération tweets likés:", error);
+        res.status(400).json({ 
+            success: false,
+            message: "Erreur lors de la récupération des tweets likés",
+            error: error.message 
+        });
+    }
+};
+
+// Obtenir tous les tweets que l'utilisateur a retweeté
+exports.getUserRetweetedTweets = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        const retweetedTweets = await Tweet.find({
+            'retweets.userId': userId
+        })
+        .populate('userId', 'username profilePicture')
+        .populate('comments.userId', 'username profilePicture')
+        .populate('mentions', 'username profilePicture')
+        .populate('likes', 'username profilePicture')
+        .populate({
+            path: 'retweetedFrom.tweetId',
+            populate: {
+                path: 'userId',
+                select: 'username profilePicture'
+            }
+        })
+        .populate({
+            path: 'retweets.userId',
+            select: 'username profilePicture'
+        })
+        .sort({ createdAt: -1 })
+        .exec();
+
+        res.status(200).json({
+            success: true,
+            count: retweetedTweets.length,
+            tweets: retweetedTweets
+        });
+
+    } catch (error) {
+        console.error("Erreur récupération retweets:", error);
+        res.status(400).json({ 
+            success: false,
+            message: "Erreur lors de la récupération des retweets",
+            error: error.message 
+        });
+    }
+};
+
+// Toggle save/unsave tweet
+exports.toggleSaveTweet = async (req, res) => {
+    try {
+        const tweetId = req.params.id;
+        const userId = req.user.userId;
+
+        const tweet = await Tweet.findById(tweetId);
+        if (!tweet) {
+            return res.status(404).json({ message: "Tweet non trouvé" });
+        }
+
+        // Vérifier si le tweet est déjà sauvegardé
+        const isSaved = tweet.savedBy.includes(userId);
+
+        if (isSaved) {
+            // Retirer des sauvegardés
+            await Tweet.findByIdAndUpdate(tweetId, {
+                $pull: { savedBy: userId }
+            });
+            res.status(200).json({ 
+                message: "Tweet retiré des sauvegardés",
+                isSaved: false
+            });
+        } else {
+            // Ajouter aux sauvegardés
+            await Tweet.findByIdAndUpdate(tweetId, {
+                $addToSet: { savedBy: userId }
+            });
+            res.status(200).json({ 
+                message: "Tweet sauvegardé avec succès",
+                isSaved: true
+            });
+        }
+
+    } catch (error) {
+        console.error("Erreur sauvegarde tweet:", error);
+        res.status(400).json({ 
+            message: "Erreur lors de la sauvegarde du tweet",
+            error: error.message 
+        });
+    }
+};
+
+// Obtenir tous les tweets sauvegardés par l'utilisateur
+exports.getSavedTweets = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        const savedTweets = await Tweet.find({
+            savedBy: userId
+        })
+        .populate('userId', 'username profilePicture')
+        .populate('comments.userId', 'username profilePicture')
+        .populate('mentions', 'username profilePicture')
+        .populate('likes', 'username profilePicture')
+        .populate('savedBy', 'username profilePicture')
+        .populate({
+            path: 'retweetedFrom.tweetId',
+            populate: {
+                path: 'userId',
+                select: 'username profilePicture'
+            }
+        })
+        .populate({
+            path: 'retweets.userId',
+            select: 'username profilePicture'
+        })
+        .sort({ createdAt: -1 })
+        .exec();
+
+        res.status(200).json({
+            success: true,
+            count: savedTweets.length,
+            tweets: savedTweets
+        });
+
+    } catch (error) {
+        console.error("Erreur récupération tweets sauvegardés:", error);
+        res.status(400).json({ 
+            success: false,
+            message: "Erreur lors de la récupération des tweets sauvegardés",
             error: error.message 
         });
     }
