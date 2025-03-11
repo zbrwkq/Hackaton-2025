@@ -9,6 +9,7 @@ import { Settings } from './pages/Settings';
 import { Messages } from './pages/Messages';
 import { Profile } from './pages/Profile';
 import { Notifications } from './pages/Notifications';
+import { SearchPage } from './pages/Search';
 import { useStore } from './store/useStore';
 
 const MOCK_TWEETS = [
@@ -264,6 +265,7 @@ function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="profile" element={<Profile />} />
             <Route path="notifications" element={<Notifications />} />
+            <Route path="search" element={<SearchPage />} />
           </Route>
         </Routes>
       </AnimatePresence>

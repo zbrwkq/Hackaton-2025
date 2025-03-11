@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { NotificationDropdown } from './NotificationDropdown';
 
 export function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   
   // Effet de scroll pour le style du header
@@ -34,6 +34,8 @@ export function Header() {
         return 'Profil';
       case '/settings':
         return 'Paramètres';
+      case '/search':
+        return 'Recherche';
       default:
         return 'Accueil';
     }
@@ -56,22 +58,25 @@ export function Header() {
           </h1>
           
           {/* Recherche et Actions */}
-          <div className="flex items-center space-x-2">
-            {/* Barre de recherche (optionnelle) */}
-            <div className="hidden md:block">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Rechercher..."
-                  className="bg-gray-100 rounded-full py-2 pl-10 pr-4 w-64 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
-                <div className="absolute left-3 top-2.5 text-gray-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
+          <div className="flex items-center space-x-3">
+            {/* Bouton de recherche avec nouveau style */}
+            <button
+              onClick={() => navigate('/search')}
+              className="bg-indigo-50 hover:bg-indigo-100 rounded-full p-2.5 transition-colors flex items-center justify-center group"
+              aria-label="Rechercher"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" 
+                   className="h-5 w-5 text-indigo-600 group-hover:text-indigo-700" 
+                   viewBox="0 0 24 24" 
+                   fill="none" 
+                   stroke="currentColor" 
+                   strokeWidth="2.5" 
+                   strokeLinecap="round" 
+                   strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </button>
             
             {/* Composant de notifications */}
             <NotificationDropdown />

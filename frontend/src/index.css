@@ -29,61 +29,6 @@ body {
   }
 }
 
-/* Styles personnalisés pour Swiper */
-.swiper {
-  width: 100%;
-  height: 100%;
-}
-
-.swiper-slide {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.3s, filter 0.3s, opacity 0.3s;
-}
-
-.swiper-pagination-bullet {
-  width: 8px;
-  height: 8px;
-  background: #D1D5DB;
-  opacity: 1;
-}
-
-.swiper-pagination-bullet-active {
-  width: 16px;
-  background: #4F46E5;
-  border-radius: 10px;
-}
-
-/* Style pour l'effet cards */
-.swiper-effect-cards {
-  overflow: visible;
-}
-
-.swiper-effect-cards .swiper-slide {
-  transform-origin: center bottom;
-  backface-visibility: hidden;
-}
-
-/* Effet de flou et réduction pour les cartes non actives */
-.swiper-effect-cards .swiper-slide:not(.swiper-slide-active) {
-  filter: blur(120px);
-  transform: scale(0.5);
-  opacity: 0.5;
-}
-
-/* Animation de transition pour l'effet de flou et de réduction */
-.swiper-effect-cards .swiper-slide {
-  transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
-}
-
-/* Effet supplémentaire pour renforcer le contraste avec la carte active */
-.swiper-slide-active {
-  z-index: 10;
-  filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.08));
-  transform: translateY(-10px) scale(1.02);
-}
-
 /* Styles pour les cartes */
 .card-active {
   overflow-y: auto;
@@ -195,4 +140,39 @@ body {
 
 .counter-animate {
   animation: pulse 0.3s ease-in-out;
+}
+
+/* Animation pour le bouton follow/unfollow */
+@keyframes pulseFollow {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.follow-button-pulse {
+  animation: pulseFollow 0.3s ease-in-out;
+}
+
+/* Styles pour les états du bouton */
+.follow-button {
+  transition: all 0.2s ease;
+}
+
+.follow-button.following {
+  position: relative;
+}
+
+/* Afficher "Ne plus suivre" au survol quand l'utilisateur est suivi */
+.follow-button.following:hover span.follow-text {
+  display: none;
+}
+
+.follow-button.following:hover span.unfollow-text {
+  display: inline;
+  color: #ef4444;
+}
+
+.follow-button.following:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
 }
