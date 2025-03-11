@@ -1,7 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { TweetCard } from './TweetCard';
 import { useStore } from '../store/useStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useVideoRecording } from '../hooks/useVideoRecording';
+import { 
+  sendVideoForAnalysis, 
+  checkCameraPermission, 
+  isRecordingSupported 
+} from '../services/emotionAnalysisService';
 
 export function Feed() {
   const tweets = useStore((state) => state.tweets);
@@ -17,6 +23,97 @@ export function Feed() {
     }))
   );
   const [bookmarkedTweets, setBookmarkedTweets] = useState<Set<string>>(new Set());
+  
+  // États pour l'enregistrement vidéo
+  const { startRecording, stopRecording, isRecording, error: recordingError, downloadLastRecording } = useVideoRecording();
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
+  const [canRecordVideo, setCanRecordVideo] = useState<boolean | null>(null);
+  const [hasRecording, setHasRecording] = useState(false);
+  
+  // Référence pour suivre l'ID du tweet actuellement enregistré
+  const currentRecordingTweetIdRef = useRef<string | null>(null);
+  
+  // Vérifier si l'enregistrement vidéo est supporté et autorisé
+  useEffect(() => {
+    const checkRecordingCapabilities = async () => {
+      try {
+        if (!isRecordingSupported()) {
+          console.log("L'enregistrement vidéo n'est pas supporté par ce navigateur");
+          setCanRecordVideo(false);
+          return;
+        }
+        
+        const hasPermission = await checkCameraPermission();
+        setCanRecordVideo(hasPermission);
+        
+        if (hasPermission) {
+          console.log("Autorisation d'accès à la caméra déjà accordée");
+        } else {
+          console.log("Autorisation d'accès à la caméra non accordée");
+        }
+      } catch (err) {
+        console.error("Erreur lors de la vérification des capacités d'enregistrement:", err);
+        setCanRecordVideo(false);
+      }
+    };
+    
+    checkRecordingCapabilities();
+  }, []);
+  
+  // Fonction pour gérer l'enregistrement uniquement quand le tweet change
+  const handleRecording = useCallback(async (currentTweet: any) => {
+    try {
+      // Ne rien faire si l'enregistrement n'est pas possible
+      if (canRecordVideo === false) {
+        return;
+      }
+      
+      // Ne rien faire si on enregistre déjà le même tweet
+      if (currentRecordingTweetIdRef.current === currentTweet._id) {
+        return;
+      }
+      
+      // 1. Si un enregistrement est en cours, l'arrêter d'abord
+      if (isRecording) {
+        await stopRecording();
+       // console.log(`Enregistrement terminé pour le tweet précédent (ID: ${currentRecordingTweetIdRef.current})`);
+        setHasRecording(true); // Indiquer qu'une vidéo est disponible pour téléchargement
+      }
+      
+      // 2. Attendre un court instant pour s'assurer que l'arrêt est bien effectué
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // 3. Démarrer un nouvel enregistrement pour le tweet actuel
+      if (currentTweet && canRecordVideo) {
+        // Mettre à jour l'ID du tweet actuellement enregistré
+        currentRecordingTweetIdRef.current = currentTweet._id;
+        
+        await startRecording(currentTweet._id);
+        //console.log(`Démarrage de l'enregistrement pour le tweet id: ${currentTweet._id}`);
+        setRecordingStartTime(Date.now());
+      }
+    } catch (err) {
+      console.error("Erreur lors de la gestion de l'enregistrement:", err);
+    }
+  }, [isRecording, stopRecording, startRecording, canRecordVideo]);
+
+  // Gérer l'enregistrement uniquement lorsque l'index change
+  useEffect(() => {
+    const currentTweet = getCurrentTweet();
+    if (currentTweet && currentTweet._id !== currentRecordingTweetIdRef.current) {
+      handleRecording(currentTweet);
+    }
+    
+    // Nettoyage lors du démontage du composant
+    return () => {
+      if (isRecording) {
+        stopRecording().catch(err => {
+          console.error("Erreur lors de l'arrêt de l'enregistrement au démontage:", err);
+        });
+        currentRecordingTweetIdRef.current = null;
+      }
+    };
+  }, [currentIndex, handleRecording]);  // Dépendances minimales nécessaires
 
   // Navigation avec les flèches du clavier
   useEffect(() => {
@@ -219,7 +316,7 @@ export function Feed() {
                 </svg>
               </motion.button>
               <span className="text-xs mt-1 text-gray-600">
-                {formatCount(currentTweet.comments?.length || 0)}
+                {formatCount(currentTweet.mentions?.length || 0)}
               </span>
             </motion.div>
             
@@ -309,6 +406,24 @@ export function Feed() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Bouton de téléchargement visible uniquement en mode développement */}
+      {/* {hasRecording && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <button
+            onClick={() => {
+              downloadLastRecording();
+              console.log("Téléchargement de la dernière vidéo enregistrée");
+            }}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-full shadow-lg flex items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+            Télécharger la vidéo
+          </button>
+        </div>
+      )} */}
     </div>
   );
 }
