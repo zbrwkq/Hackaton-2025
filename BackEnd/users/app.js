@@ -8,15 +8,17 @@ dotenv.config();
 
 const app = express();
 
-
-
-app.use(cors({ origin: "*" }));
+// Middlewares
 app.use(express.json());
+app.use(cors({ origin: "*" }));
 
-
-/* connectDB()
-    .then(() => console.log("✅ Service Users connecté à MongoDB"))
-    .catch(err => console.error("❌ Erreur de connexion à MongoDB :", err));
+// Connexion MongoDB simple et directe
+mongoose.connect("mongodb://127.0.0.1:27017/HackatonTwitter", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+})
+.then(() => console.log("✅ Connecté à MongoDB"))
+.catch(err => console.error("❌ Erreur de connexion:", err));
 
 // Route de test simple
 app.get('/health', (req, res) => {

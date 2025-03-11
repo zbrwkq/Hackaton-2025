@@ -34,7 +34,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 const tweetRoutes = require("./routes/tweetRoutes");
-app.use("/api/tweets", tweetRoutes);
+app.use("/tweets", tweetRoutes);
 
 // Gestion des erreurs
 app.use((err, req, res, next) => {
