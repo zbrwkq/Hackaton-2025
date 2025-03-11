@@ -7,6 +7,7 @@ interface VideoRecordingHook {
   isRecording: boolean;
   error: string | null;
   downloadLastRecording: () => void;
+  requestCameraPermission: () => Promise<boolean>;
 }
 
 /**
@@ -41,6 +42,9 @@ export function useVideoRecording(): VideoRecordingHook {
   // Références pour éviter les opérations simultanées
   const isStartingRef = useRef<boolean>(false);
   const isStoppingRef = useRef<boolean>(false);
+  
+  // État pour suivre si l'autorisation de caméra a été accordée
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
 
   // Nettoyage des ressources
   useEffect(() => {
@@ -50,6 +54,46 @@ export function useVideoRecording(): VideoRecordingHook {
       }
     };
   }, []);
+  
+  /**
+   * Demande explicitement à l'utilisateur l'autorisation d'utiliser la caméra
+   * @returns Une promesse qui se résout à true si l'autorisation est accordée, false sinon
+   */
+  const requestCameraPermission = async (): Promise<boolean> => {
+    try {
+      // Créer un élément de dialogue pour expliquer à l'utilisateur pourquoi nous avons besoin de la caméra
+      const confirmed = window.confirm(
+        "Pour améliorer votre expérience, nous aimerions accéder à votre caméra. " +
+        "Cela nous permettra d'analyser vos réactions aux tweets. " +
+        "\n\nVeuillez autoriser l'accès à la caméra lorsque votre navigateur vous le demandera."
+      );
+      
+      if (!confirmed) {
+        console.log("L'utilisateur a refusé de donner son consentement pour la caméra");
+        setHasCameraPermission(false);
+        return false;
+      }
+      
+      // Demander l'accès à la caméra de manière explicite
+      const tempStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false
+      });
+      
+      // Si nous arrivons ici, l'autorisation a été accordée
+      // Arrêter immédiatement cette stream temporaire
+      tempStream.getTracks().forEach(track => track.stop());
+      
+      console.log("Autorisation d'accès à la caméra accordée par l'utilisateur");
+      setHasCameraPermission(true);
+      return true;
+      
+    } catch (err) {
+      console.error("Erreur lors de la demande d'autorisation de caméra:", err);
+      setHasCameraPermission(false);
+      return false;
+    }
+  };
 
   /**
    * Télécharge la dernière vidéo enregistrée
@@ -99,6 +143,18 @@ export function useVideoRecording(): VideoRecordingHook {
     try {
       isStartingRef.current = true;
       
+      // Vérifier si nous avons déjà l'autorisation pour la caméra
+      if (hasCameraPermission === null || hasCameraPermission === false) {
+        // Si nous n'avons pas encore vérifié ou si l'autorisation a été refusée,
+        // demander explicitement l'autorisation
+        const permitted = await requestCameraPermission();
+        if (!permitted) {
+          console.log("Impossible d'accéder à la caméra: autorisation refusée");
+          setError("Autorisation d'accès à la caméra refusée");
+          return;
+        }
+      }
+      
       // Arrêter l'enregistrement précédent si nécessaire
       if (isRecording) {
         await stopRecording();
@@ -120,11 +176,18 @@ export function useVideoRecording(): VideoRecordingHook {
       });
       
       // Créer le MediaRecorder avec un bitrate bas
-      const mediaRecorder = new MediaRecorder(streamRef.current, {
-        mimeType: 'video/webm;codecs=vp8',
+      const options: MediaRecorderOptions = {
         videoBitsPerSecond: VIDEO_CONFIG.bitsPerSecond
-      });
+      };
       
+      // Vérifier si le navigateur supporte le codec spécifié
+      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
+        options.mimeType = 'video/webm;codecs=vp8';
+      } else if (MediaRecorder.isTypeSupported('video/webm')) {
+        options.mimeType = 'video/webm';
+      }
+      
+      const mediaRecorder = new MediaRecorder(streamRef.current, options);
       mediaRecorderRef.current = mediaRecorder;
       
       // Configurer la collecte des données
@@ -138,7 +201,8 @@ export function useVideoRecording(): VideoRecordingHook {
       // Gérer la fin de l'enregistrement
       mediaRecorder.onstop = async () => {
         // Créer un blob à partir des chunks collectés avec compression
-        const videoBlob = new Blob(chunksRef.current, { type: 'video/webm;codecs=vp8' });
+        const mimeType = options.mimeType || 'video/webm';
+        const videoBlob = new Blob(chunksRef.current, { type: mimeType });
         
         // Afficher la taille du blob pour diagnostique
         console.log(`Taille de la vidéo enregistrée: ${(videoBlob.size / 1024).toFixed(2)} KB`);
@@ -227,6 +291,7 @@ export function useVideoRecording(): VideoRecordingHook {
     stopRecording,
     isRecording,
     error,
-    downloadLastRecording
+    downloadLastRecording,
+    requestCameraPermission
   };
 } 

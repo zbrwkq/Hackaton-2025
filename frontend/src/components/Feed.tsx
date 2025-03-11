@@ -25,10 +25,19 @@ export function Feed() {
   const [bookmarkedTweets, setBookmarkedTweets] = useState<Set<string>>(new Set());
   
   // États pour l'enregistrement vidéo
-  const { startRecording, stopRecording, isRecording, error: recordingError, downloadLastRecording } = useVideoRecording();
+  const { 
+    startRecording, 
+    stopRecording, 
+    isRecording, 
+    error: recordingError, 
+    downloadLastRecording,
+    requestCameraPermission 
+  } = useVideoRecording();
+  
   const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
   const [canRecordVideo, setCanRecordVideo] = useState<boolean | null>(null);
   const [hasRecording, setHasRecording] = useState(false);
+  const [showPermissionButton, setShowPermissionButton] = useState(true);
   
   // Référence pour suivre l'ID du tweet actuellement enregistré
   const currentRecordingTweetIdRef = useRef<string | null>(null);
@@ -37,20 +46,17 @@ export function Feed() {
   useEffect(() => {
     const checkRecordingCapabilities = async () => {
       try {
+        // Vérifier d'abord si le navigateur supporte l'enregistrement
         if (!isRecordingSupported()) {
           console.log("L'enregistrement vidéo n'est pas supporté par ce navigateur");
           setCanRecordVideo(false);
           return;
         }
         
-        const hasPermission = await checkCameraPermission();
-        setCanRecordVideo(hasPermission);
+        // Par défaut, nous supposons que nous n'avons pas encore l'autorisation
+        setCanRecordVideo(false);
+        setShowPermissionButton(true);
         
-        if (hasPermission) {
-          console.log("Autorisation d'accès à la caméra déjà accordée");
-        } else {
-          console.log("Autorisation d'accès à la caméra non accordée");
-        }
       } catch (err) {
         console.error("Erreur lors de la vérification des capacités d'enregistrement:", err);
         setCanRecordVideo(false);
@@ -60,6 +66,29 @@ export function Feed() {
     checkRecordingCapabilities();
   }, []);
   
+  // Demander l'autorisation d'utiliser la caméra
+  const handleRequestPermission = async () => {
+    try {
+      const granted = await requestCameraPermission();
+      if (granted) {
+        setCanRecordVideo(true);
+        setShowPermissionButton(false);
+        
+        // Si l'autorisation est accordée, démarrer l'enregistrement pour le tweet actuel
+        const currentTweet = getCurrentTweet();
+        if (currentTweet) {
+          handleRecording(currentTweet);
+        }
+      } else {
+        setCanRecordVideo(false);
+        alert("Sans accès à la caméra, nous ne pourrons pas analyser vos réactions. Vous pouvez réessayer plus tard si vous changez d'avis.");
+      }
+    } catch (err: unknown) {
+      console.error("Erreur lors de la demande d'autorisation:", err);
+      setCanRecordVideo(false);
+    }
+  };
+
   // Fonction pour gérer l'enregistrement uniquement quand le tweet change
   const handleRecording = useCallback(async (currentTweet: any) => {
     try {
@@ -407,7 +436,22 @@ export function Feed() {
         )}
       </AnimatePresence>
 
-      {/* Bouton de téléchargement visible uniquement en mode développement */}
+      {/* Bouton pour demander l'autorisation de la caméra */}
+      {showPermissionButton && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
+          <button
+            onClick={handleRequestPermission}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-full shadow-lg flex items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm12.553 1.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+            </svg>
+            Autoriser l'accès à la caméra
+          </button>
+        </div>
+      )}
+
+      {/* Bouton de téléchargement pour le développement */}
       {/* {hasRecording && (
         <div className="fixed bottom-4 right-4 z-50">
           <button
@@ -424,6 +468,16 @@ export function Feed() {
           </button>
         </div>
       )} */}
+
+      {/* Message d'erreur d'enregistrement */}
+      {recordingError && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <strong className="font-bold">Erreur:</strong>
+            <span className="block sm:inline"> {recordingError}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
