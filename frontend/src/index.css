@@ -28,3 +28,171 @@ body {
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   }
 }
+
+/* Styles personnalisés pour Swiper */
+.swiper {
+  width: 100%;
+  height: 100%;
+}
+
+.swiper-slide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s, filter 0.3s, opacity 0.3s;
+}
+
+.swiper-pagination-bullet {
+  width: 8px;
+  height: 8px;
+  background: #D1D5DB;
+  opacity: 1;
+}
+
+.swiper-pagination-bullet-active {
+  width: 16px;
+  background: #4F46E5;
+  border-radius: 10px;
+}
+
+/* Style pour l'effet cards */
+.swiper-effect-cards {
+  overflow: visible;
+}
+
+.swiper-effect-cards .swiper-slide {
+  transform-origin: center bottom;
+  backface-visibility: hidden;
+}
+
+/* Effet de flou et réduction pour les cartes non actives */
+.swiper-effect-cards .swiper-slide:not(.swiper-slide-active) {
+  filter: blur(120px);
+  transform: scale(0.5);
+  opacity: 0.5;
+}
+
+/* Animation de transition pour l'effet de flou et de réduction */
+.swiper-effect-cards .swiper-slide {
+  transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* Effet supplémentaire pour renforcer le contraste avec la carte active */
+.swiper-slide-active {
+  z-index: 10;
+  filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.08));
+  transform: translateY(-10px) scale(1.02);
+}
+
+/* Styles pour les cartes */
+.card-active {
+  overflow-y: auto;
+  max-height: 80vh;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.card-inactive {
+  overflow: hidden;
+  max-height: 70vh;
+  pointer-events: none;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.card-content {
+  padding: 1rem;
+  height: fit-content;
+}
+
+.active-card-content {
+  height: auto;
+}
+
+/* Pour éviter les barres de défilement disgracieuses */
+.card-active::-webkit-scrollbar {
+  width: 6px;
+}
+
+.card-active::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.card-active::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  border: 2px solid transparent;
+}
+
+/* Styles pour les boutons d'action flottants */
+.action-buttons-container {
+  position: relative;
+  z-index: 20;
+}
+
+.action-button {
+  transition: all 0.3s ease;
+}
+
+.action-button:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Effets spécifiques selon l'état */
+.like-button.active {
+  color: #ef4444;
+  background-color: #fee2e2;
+}
+
+.retweet-button.active {
+  color: #10b981;
+  background-color: #d1fae5;
+}
+
+.bookmark-button.active {
+  color: #2563eb;
+  background-color: #dbeafe;
+}
+
+@media (max-width: 640px) {
+  .action-buttons-container {
+    position: fixed;
+    bottom: 16px;
+    left: 0;
+    right: 0;
+    padding: 0 16px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+}
+
+/* Styles pour les boutons d'action avec compteurs */
+.action-button-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.action-button {
+  transition: all 0.3s ease;
+}
+
+.action-button:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Animation pour les compteurs lors du changement */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.counter-animate {
+  animation: pulse 0.3s ease-in-out;
+}
