@@ -8,14 +8,12 @@ const tweetSchema = new mongoose.Schema({
     },
     content: {
         type: String,
-        required: true,
-        maxLength: 280 // Limite standard de Twitter
+        maxLength: 280
     },
     media: [{
-        type: String, // URLs des médias
+        type: String,
         validate: {
             validator: function(url) {
-                // Validation basique d'URL
                 return /^(http|https):\/\/[^ "]+$/.test(url);
             },
             message: 'URL invalide'
@@ -34,16 +32,33 @@ const tweetSchema = new mongoose.Schema({
         ref: 'User'
     }],
     retweets: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-    }]
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        tweetId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Tweet'
+        }
+    }, { _id: false }],
+    retweetedFrom: {
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        tweetId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Tweet'
+        }
+    }
 }, {
-    timestamps: true // Ajoute automatiquement createdAt et updatedAt
+    timestamps: true
 });
 
 // Index pour améliorer les performances de recherche
 tweetSchema.index({ hashtags: 1 });
 tweetSchema.index({ userId: 1, createdAt: -1 });
+tweetSchema.index({ 'retweetData.originalTweet': 1 });
 
 const Tweet = mongoose.model('Tweet', tweetSchema);
 module.exports = Tweet;
