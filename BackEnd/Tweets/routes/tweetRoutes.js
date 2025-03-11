@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const tweetController = require('../controllers/tweetController');
-const authMiddleware = require('../../users/middleware/authMiddleware'); // Middleware d'authentification à implémenter
+const authMiddleware = require('../../users/middleware/authMiddleware');
 
 // Routes publiques
-router.get('/',authMiddleware,  tweetController.getAllTweets);
+router.get('/', authMiddleware, tweetController.getAllTweets);
 router.get('/:id', authMiddleware, tweetController.getTweetById);
 router.get('/hashtag/:hashtag', authMiddleware, tweetController.searchByHashtag);
 

@@ -64,13 +64,36 @@ exports.createTweet = async (req, res) => {
 exports.getAllTweets = async (req, res) => {
     try {
         const tweets = await Tweet.find()
+            .populate('userId', 'username profilePicture')
+            .populate('mentions', 'username profilePicture')
+            .populate('likes', 'username profilePicture')
+            .populate({
+                path: 'retweetedFrom.tweetId',
+                populate: {
+                    path: 'userId',
+                    select: 'username profilePicture'
+                }
+            })
+            .populate({
+                path: 'retweets.userId',
+                select: 'username profilePicture'
+            })
             .sort({ createdAt: -1 })
-            .populate('userId', 'username avatar')
-            .populate('mentions', 'username')
             .exec();
-        res.json(tweets);
+
+        res.status(200).json({
+            success: true,
+            count: tweets.length,
+            tweets: tweets
+        });
+
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error("Erreur récupération tweets:", error);
+        res.status(400).json({ 
+            success: false,
+            message: "Erreur lors de la récupération des tweets",
+            error: error.message 
+        });
     }
 };
 
