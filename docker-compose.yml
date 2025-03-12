@@ -77,23 +77,6 @@ services:
       - mongodb_data:/data/db
     networks:
       - db-ntw     # Uniquement pour être accessible par les services qui ont besoin de la base de données
-
-  # Service Database (backend)
-  database-service:
-    build:
-      context: ./BackEnd/Database
-      dockerfile: Dockerfile
-    container_name: database-service
-    restart: always
-    depends_on:
-      - mongodb
-    environment:
-      - MONGODB_URI=mongodb://mongodb:27017/HackatonTwitter
-    volumes:
-      - ./BackEnd/Database:/app
-      - /app/node_modules
-    networks:
-      - db-ntw     # Uniquement pour accéder à MongoDB
       
   # Service Search (backend)
   search-service:

@@ -8,3 +8,4 @@ torch
 transformers
 emoji
 joblib
+scikit-learn
