@@ -16,7 +16,7 @@ initSocket(server); // ✅ On passe `server` à WebSocket
 
 // Connexion MongoDB
 mongoose
-  .connect("mongodb://127.0.0.1:27017/HackatonTwitter")
+  .connect("mongodb://mongodb:27017/HackatonTwitter")
   .then(() => console.log("✅ Service Notifications connecté à MongoDB"))
   .catch((err) => console.error("❌ Erreur de connexion MongoDB:", err));
 
