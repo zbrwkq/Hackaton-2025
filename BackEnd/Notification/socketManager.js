@@ -12,13 +12,12 @@ const initSocket = (server) => {
     io.on("connection", (socket) => {
         console.log(`🔗 Nouvelle connexion WebSocket : ${socket.id}`);
 
-        // Enregistrer un utilisateur connecté
         socket.on("register", (userId) => {
             onlineUsers.set(userId, socket.id);
             console.log(`✅ Utilisateur connecté : ${userId}`);
+            console.log("👥 Liste des utilisateurs connectés :", [...onlineUsers.keys()]);
         });
 
-        // Gérer la déconnexion
         socket.on("disconnect", () => {
             onlineUsers.forEach((socketId, userId) => {
                 if (socketId === socket.id) {
@@ -26,6 +25,7 @@ const initSocket = (server) => {
                     onlineUsers.delete(userId);
                 }
             });
+            console.log("👥 Liste mise à jour des utilisateurs connectés :", [...onlineUsers.keys()]);
         });
     });
 };
@@ -42,7 +42,8 @@ const sendNotification = (userId, notificationData) => {
         io.to(socketId).emit("notification", notificationData);
         console.log(`📨 Notification envoyée à ${userId}`);
     } else {
-        console.log(`⚠️ L'utilisateur ${userId} n'est pas connecté.`);
+        console.log(`⚠️ L'utilisateur ${userId} n'est pas connecté. Impossible d'envoyer en temps réel.`);
+        console.log("👥 Utilisateurs connectés actuellement :", [...onlineUsers.keys()]);
     }
 };
 

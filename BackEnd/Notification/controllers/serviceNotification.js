@@ -1,5 +1,7 @@
 const Notification = require("../models/Notification");
 const { sendNotification } = require("../socketManager"); // ✅ Importation depuis `socketManager.js`
+const Tweet = require("../../Tweets/models/tweetModel"); // Import du modèle Tweet
+
 
 // Récupérer les notifications d'un utilisateur
 exports.getNotifications = async (req, res) => {
@@ -36,26 +38,48 @@ exports.markAsRead = async (req, res) => {
 };
 
 // Créer une notification et envoyer via WebSocket
-/* exports.createNotification = async (req, res) => {
-    try {
-        const { userId, type, relatedUserId, tweetId } = req.body;
 
-        const notification = new Notification({ userId, type, relatedUserId, tweetId });
+exports.createNotification = async (req, res) => {
+    try {
+        const { userId, tweetId } = req.body; // L'utilisateur qui envoie la notif et l'ID du tweet
+
+        // 🔍 Récupérer l'auteur du tweet pour envoyer la notif
+        const tweet = await Tweet.findById(tweetId);
+        if (!tweet) {
+            return res.status(404).json({ message: "Tweet non trouvé" });
+        }
+
+        const targetUserId = tweet.userId; // ✅ L'utilisateur qui a posté le tweet
+
+        // ✅ Vérifier si l'utilisateur n'envoie pas une notif à lui-même
+        if (targetUserId.toString() === userId.toString()) {
+            return res.status(400).json({ message: "Impossible de s'envoyer une notification !" });
+        }
+
+        // ✅ Créer la notification
+        const notification = new Notification({
+            userId: targetUserId, // Le destinataire
+            type: "mention",
+            relatedUserId: userId, // L'émetteur
+            tweetId: tweetId
+        });
+
         await notification.save();
 
-        // Envoyer la notification en temps réel via WebSocket
-        if (io) {
-            io.to(userId).emit("notification", notification);
-            console.log(`📨 Notification envoyée en temps réel à ${userId}`);
-        }
+        // ✅ Envoyer la notification en temps réel via WebSocket
+        sendNotification(targetUserId, notification);
+
+        console.log(`📨 Notification envoyée à ${targetUserId}`);
 
         res.status(201).json(notification);
     } catch (error) {
+        console.error("❌ Erreur lors de la création de la notification :", error);
         res.status(500).json({ message: "Erreur lors de la création de la notification", error: error.message });
     }
-}; */
+};
 
-exports.createNotification = async (req, res) => {
+
+/* exports.createNotification = async (req, res) => {
     try {
         const { userId, type, relatedUserId, tweetId } = req.body;
 
@@ -73,4 +97,4 @@ exports.createNotification = async (req, res) => {
         res.status(500).json({ message: "Erreur lors de la création de la notification", error: error.message });
     }
 };
-
+ */

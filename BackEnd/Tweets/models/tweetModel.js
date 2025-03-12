@@ -66,6 +66,10 @@ const tweetSchema = new mongoose.Schema({
             type: Date,
             default: Date.now
         }
+    }],
+    savedBy: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     }]
 }, {
     timestamps: true

@@ -1,0 +1,178 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --swipe-threshold: 50px;
+}
+
+body {
+  @apply text-gray-900 bg-gray-50;
+  overscroll-behavior-y: none;
+  font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+}
+
+.feed-container {
+  height: calc(100vh - 3.5rem);
+  overflow: hidden;
+}
+
+@layer base {
+  * {
+    @apply antialiased;
+  }
+}
+
+@layer utilities {
+  .text-shadow {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Styles pour les cartes */
+.card-active {
+  overflow-y: auto;
+  max-height: 80vh;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.card-inactive {
+  overflow: hidden;
+  max-height: 70vh;
+  pointer-events: none;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.card-content {
+  padding: 1rem;
+  height: fit-content;
+}
+
+.active-card-content {
+  height: auto;
+}
+
+/* Pour éviter les barres de défilement disgracieuses */
+.card-active::-webkit-scrollbar {
+  width: 6px;
+}
+
+.card-active::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.card-active::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  border: 2px solid transparent;
+}
+
+/* Styles pour les boutons d'action flottants */
+.action-buttons-container {
+  position: relative;
+  z-index: 20;
+}
+
+.action-button {
+  transition: all 0.3s ease;
+}
+
+.action-button:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Effets spécifiques selon l'état */
+.like-button.active {
+  color: #ef4444;
+  background-color: #fee2e2;
+}
+
+.retweet-button.active {
+  color: #10b981;
+  background-color: #d1fae5;
+}
+
+.bookmark-button.active {
+  color: #2563eb;
+  background-color: #dbeafe;
+}
+
+@media (max-width: 640px) {
+  .action-buttons-container {
+    position: fixed;
+    bottom: 16px;
+    left: 0;
+    right: 0;
+    padding: 0 16px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+}
+
+/* Styles pour les boutons d'action avec compteurs */
+.action-button-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.action-button {
+  transition: all 0.3s ease;
+}
+
+.action-button:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Animation pour les compteurs lors du changement */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.counter-animate {
+  animation: pulse 0.3s ease-in-out;
+}
+
+/* Animation pour le bouton follow/unfollow */
+@keyframes pulseFollow {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.follow-button-pulse {
+  animation: pulseFollow 0.3s ease-in-out;
+}
+
+/* Styles pour les états du bouton */
+.follow-button {
+  transition: all 0.2s ease;
+}
+
+.follow-button.following {
+  position: relative;
+}
+
+/* Afficher "Ne plus suivre" au survol quand l'utilisateur est suivi */
+.follow-button.following:hover span.follow-text {
+  display: none;
+}
+
+.follow-button.following:hover span.unfollow-text {
+  display: inline;
+  color: #ef4444;
+}
+
+.follow-button.following:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+}

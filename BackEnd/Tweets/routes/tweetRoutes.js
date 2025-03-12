@@ -21,4 +21,13 @@ router.delete('/:id', authMiddleware, tweetController.deleteTweet);
 // Nouvelle route pour les commentaires
 router.post('/:id/comment', authMiddleware, tweetController.addComment);
 
+// Nouvelles routes pour obtenir les interactions de l'utilisateur
+router.get('/user/comments', authMiddleware, tweetController.getUserCommentedTweets);
+router.get('/user/likes', authMiddleware, tweetController.getUserLikedTweets);
+router.get('/user/retweets', authMiddleware, tweetController.getUserRetweetedTweets);
+
+// Routes pour les tweets sauvegardés
+router.post('/:id/save', authMiddleware, tweetController.toggleSaveTweet);
+router.get('/user/saved', authMiddleware, tweetController.getSavedTweets);
+
 module.exports = router;

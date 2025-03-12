@@ -11,4 +11,9 @@ router.post("/login", (req, res, next) => {
 }, userController.login);
 router.get("/profile", authMiddleware, userController.getProfile);
 
+// Routes simplifiées pour follow/unfollow et listes
+router.post("/follow/:id", authMiddleware, userController.toggleFollow);
+router.get("/followers", authMiddleware, userController.getFollowers);
+router.get("/following", authMiddleware, userController.getFollowing);
+
 module.exports = router;
