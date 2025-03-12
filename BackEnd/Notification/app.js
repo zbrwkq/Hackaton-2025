@@ -28,6 +28,14 @@ app.use(cors({ origin: "*" }));
 const notificationRoutes = require("./routes/notificationRoutes");
 app.use("/notifications", notificationRoutes);
 
+// Route de vérification de santé
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'Notification Service is running',
+    message: 'Utilisez /notifications pour accéder aux notifications'
+  });
+});
+
 // Démarrer le serveur HTTP + WebSocket
 const PORT = process.env.NOTIFICATION_SERVICE_PORT || 5003;
 server.listen(PORT, () => {

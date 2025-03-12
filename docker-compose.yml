@@ -1,25 +1,4 @@
 services:
-  # Service Traefik
-  traefik:
-    image: traefik:v2.10
-    container_name: traefik
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"  # Dashboard Traefik (optionnel, à sécuriser en production)
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik/config:/etc/traefik
-    command:
-      - "--api.insecure=true"  # Dashboard accessible sans authentification (à désactiver en production)
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-    networks:
-      - proxy-ntw   # Uniquement pour communiquer avec les services exposés publiquement
-
   # Service API Gateway
   api-gateway:
     build:
@@ -27,20 +6,14 @@ services:
       dockerfile: Dockerfile
     container_name: api-gateway
     restart: always
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=Host(`hackaton.local`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.api.entrypoints=web"
-      - "traefik.http.services.api.loadbalancer.server.port=3000"
-      - "traefik.http.middlewares.api-stripprefix.stripprefix.prefixes=/api"
-      - "traefik.http.routers.api.middlewares=api-stripprefix@docker"
+    ports:
+      - "3000:3000"  # Exposé directement sur le port 3000
     environment:
       - PORT=3000
     volumes:
       - ./BackEnd/api-getway:/app
       - /app/node_modules
     networks:
-      - proxy-ntw   # Pour recevoir les requêtes de Traefik
       - api-ntw     # Pour communiquer avec les services backend
     depends_on:
       - users-service
@@ -56,13 +29,13 @@ services:
       dockerfile: Dockerfile
     container_name: frontend
     restart: always
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`hackaton.local`)"
-      - "traefik.http.routers.frontend.entrypoints=web"
-      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+    ports:
+      - "80:80"    # Exposé directement sur le port 80
     networks:
-      - proxy-ntw   # Uniquement pour recevoir les requêtes de Traefik
+      - api-ntw    # Pour communiquer avec l'API Gateway et les services
+    depends_on:
+      - api-gateway
+      - notification-service
 
   # Service MongoDB
   mongodb:
@@ -159,12 +132,8 @@ services:
     restart: always
     depends_on:
       - mongodb
-    # Configuration pour WebSocket (maintenue distincte de l'API Gateway)
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.notification-ws.rule=Host(`hackaton.local`) && PathPrefix(`/socket.io`)"
-      - "traefik.http.routers.notification-ws.entrypoints=web"
-      - "traefik.http.services.notification-ws.loadbalancer.server.port=5003"
+    ports:
+      - "5003:5003"  # Exposé directement pour les WebSockets
     environment:
       - MONGODB_URI=mongodb://mongodb:27017/HackatonTwitter
       - NOTIFICATION_SERVICE_PORT=5003
@@ -174,13 +143,8 @@ services:
     networks:
       - db-ntw     # Pour accéder à MongoDB
       - api-ntw    # Pour être accessible par l'API Gateway
-      - proxy-ntw  # Pour être accessible directement par Traefik pour les WebSockets
 
 networks:
-  # Réseau pour les communications exposées au monde extérieur via Traefik
-  proxy-ntw:
-    driver: bridge
-  
   # Réseau pour les communications entre l'API Gateway et les services backend
   api-ntw:
     driver: bridge

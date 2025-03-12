@@ -52,6 +52,23 @@ def clean_tweet(tweet):
     
     return tweet
 
+# Route de vérification de santé
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({
+        'status': 'AI Service is running',
+        'models': {
+            'emotion_detection': 'loaded' if emo_model else 'not loaded',
+            'clustering': 'loaded' if kmeans_model else 'not loaded',
+            'bert': 'loaded' if bert_model else 'not loaded'
+        },
+        'endpoints': [
+            '/health',
+            '/emotions',
+            '/cluster',
+            '/clusters'
+        ]
+    }), 200
 
 @app.route('/emotions', methods=['POST'])
 def get_emotions():
