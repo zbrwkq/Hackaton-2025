@@ -1,21 +1,6 @@
 const mongoose = require('mongoose');
 const Tweet = require('../models/tweetModel');
-
-// Définir le schéma User directement dans le contrôleur des tweets
-const UserSchema = new mongoose.Schema({
-    username: { type: String, required: true, unique: true },
-    bio: { type: String, default: "" },
-    profilePicture: { type: String, default: "" },
-    banner: { type: String, default: "" },
-    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-    following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-    password: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
-});
-
-// Créer le modèle User s'il n'existe pas déjà
-const User = mongoose.models.User || mongoose.model('User', UserSchema);
+const User = require('../models/User'); // Import direct du modèle User
 
 // Créer un nouveau tweet
 exports.createTweet = async (req, res) => {
