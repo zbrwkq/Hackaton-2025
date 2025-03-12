@@ -1,6 +1,6 @@
 const Notification = require("../models/Notification");
 const { sendNotification } = require("../socketManager"); // ✅ Importation depuis `socketManager.js`
-const Tweet = require("../../Tweets/models/tweetModel"); // Import du modèle Tweet
+const Tweet = require("../models/tweetModel"); // Import du modèle Tweet
 
 
 // Récupérer les notifications d'un utilisateur
