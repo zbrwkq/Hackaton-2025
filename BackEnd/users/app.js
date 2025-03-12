@@ -30,7 +30,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 const userRoutes = require("./routes/userRoutes");
-app.use("/api/users", userRoutes);
+app.use("/users", userRoutes);
 
 // Gestion des erreurs
 app.use((err, req, res, next) => {
