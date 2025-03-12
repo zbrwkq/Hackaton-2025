@@ -1,8 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Filter, Calendar, TrendingUp, Hash, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { search, getTrends, getDateRangeFromPeriod } from '../services/searchService';
+import { isAuthenticated } from '../services/authService';
 
 export function SearchBar() {
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'users' | 'hashtags'>('all');
@@ -11,14 +15,108 @@ export function SearchBar() {
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
-  // Données de démonstration
-  const recentSearches = ['IA générative', 'développement durable', 'machine learning'];
-  const trendingHashtags = ['#IA', '#TechNews', '#DataScience', '#MachineLearning', '#Innovation'];
-  const suggestedUsers = [
-    { id: 'u1', username: 'Elena Chen', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' },
-    { id: 'u2', username: 'Alex Rivera', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100' },
-    { id: 'u3', username: 'Sophia Kim', avatar: 'https://images.unsplash.com/photo-1564046247017-4462f3c1e9a2?w=100' }
-  ];
+  // États pour les données dynamiques
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [trendingHashtags, setTrendingHashtags] = useState<any[]>([]);
+  const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<any>({});
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Charger les tendances et les utilisateurs suggérés au montage
+  useEffect(() => {
+    if (isExpanded && isAuthenticated()) {
+      loadTrendingHashtags();
+      loadSuggestedUsers();
+    }
+  }, [isExpanded]);
+  
+  // Charger les hashtags tendances
+  const loadTrendingHashtags = async () => {
+    try {
+      const response = await getTrends('24h');
+      if (response.success && response.trends) {
+        // Convertir les tendances en format attendu par le composant
+        const formattedTrends = response.trends.map((trend: any) => `#${trend.hashtag}`);
+        setTrendingHashtags(formattedTrends.slice(0, 5)); // Limiter à 5 hashtags
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des hashtags tendances:', error);
+      // Valeurs par défaut en cas d'erreur
+      setTrendingHashtags(['#IA', '#TechNews', '#DataScience', '#MachineLearning', '#Innovation']);
+    }
+  };
+  
+  // Charger les utilisateurs suggérés
+  const loadSuggestedUsers = async () => {
+    try {
+      // Recherche d'utilisateurs populaires ou actifs récemment
+      const response = await search({ type: 'users', sortBy: 'popular', limit: 3 });
+      if (response.success && response.results.users) {
+        // Convertir les utilisateurs au format attendu par le composant
+        const formattedUsers = response.results.users.map((user: any) => ({
+          id: user._id,
+          username: user.username,
+          avatar: user.profilePicture || 'https://via.placeholder.com/100'
+        }));
+        setSuggestedUsers(formattedUsers);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des utilisateurs suggérés:', error);
+      // Valeurs par défaut en cas d'erreur
+      setSuggestedUsers([
+        { id: 'u1', username: 'Elena Chen', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' },
+        { id: 'u2', username: 'Alex Rivera', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100' },
+        { id: 'u3', username: 'Sophia Kim', avatar: 'https://images.unsplash.com/photo-1564046247017-4462f3c1e9a2?w=100' }
+      ]);
+    }
+  };
+  
+  // Effectuer une recherche
+  const performSearch = async () => {
+    if (!searchQuery.trim() || !isAuthenticated()) return;
+    
+    setIsLoading(true);
+    
+    try {
+      // Récupérer les dates correspondant au filtre
+      const dateRange = getDateRangeFromPeriod(dateFilter);
+      
+      // Convertir le type de tri
+      const apiSortBy = sortBy === 'relevant' ? 'popular' : sortBy === 'popular' ? 'popular' : 'recent';
+      
+      // Effectuer la recherche
+      const response = await search({
+        q: searchQuery,
+        type: activeTab,
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+        sortBy: apiSortBy,
+        limit: 5 // Limiter les résultats pour l'aperçu
+      });
+      
+      if (response.success) {
+        setSearchResults(response.results);
+        
+        // Sauvegarder la recherche dans l'historique
+        saveSearchToHistory(searchQuery);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la recherche:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Déclencher la recherche quand les critères changent
+  useEffect(() => {
+    const debounceTimeout = setTimeout(() => {
+      if (isExpanded && searchQuery.trim()) {
+        performSearch();
+      }
+    }, 500); // Délai pour éviter trop de requêtes
+    
+    return () => clearTimeout(debounceTimeout);
+  }, [searchQuery, activeTab, dateFilter, sortBy, isExpanded]);
   
   // Fermer le menu de recherche en cliquant en dehors
   useEffect(() => {
@@ -39,12 +137,58 @@ export function SearchBar() {
     }
   }, [isExpanded]);
   
+  // Charger l'historique des recherches récentes
+  useEffect(() => {
+    const storedSearches = localStorage.getItem('recentSearches');
+    if (storedSearches) {
+      try {
+        setRecentSearches(JSON.parse(storedSearches));
+      } catch (e) {
+        setRecentSearches([]);
+      }
+    }
+  }, []);
+  
+  // Sauvegarder une recherche dans l'historique
+  const saveSearchToHistory = (query: string) => {
+    if (!query.trim()) return;
+    
+    // Récupérer les recherches actuelles
+    const currentSearches = [...recentSearches];
+    
+    // Vérifier si la recherche existe déjà
+    const existingIndex = currentSearches.indexOf(query);
+    if (existingIndex !== -1) {
+      // Supprimer l'existant pour le mettre en premier
+      currentSearches.splice(existingIndex, 1);
+    }
+    
+    // Ajouter la nouvelle recherche au début
+    currentSearches.unshift(query);
+    
+    // Limiter à 5 recherches
+    const updatedSearches = currentSearches.slice(0, 5);
+    
+    // Mettre à jour l'état et le stockage local
+    setRecentSearches(updatedSearches);
+    localStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
+  };
+  
   // Formatage du nombre de résultats
   const formatResultCount = (count: number): string => {
     if (count === 0) return "Aucun résultat";
     if (count === 1) return "1 résultat";
     if (count < 1000) return `${count} résultats`;
     return `${(count / 1000).toFixed(1)}k résultats`;
+  };
+  
+  // Accéder à la page de recherche complète
+  const goToSearchPage = () => {
+    if (searchQuery.trim()) {
+      saveSearchToHistory(searchQuery);
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}&tab=${activeTab}&sort=${sortBy}&date=${dateFilter}`);
+      setIsExpanded(false);
+    }
   };
   
   return (
@@ -68,6 +212,11 @@ export function SearchBar() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onClick={() => setIsExpanded(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              goToSearchPage();
+            }
+          }}
           className="py-2 pl-10 pr-4 w-full focus:outline-none bg-transparent"
         />
         <div className="absolute left-3 top-2.5 text-gray-400">
@@ -187,207 +336,309 @@ export function SearchBar() {
                 </div>
               </div>
               
-              {/* Bouton Filtres avancés */}
-              <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white rounded-full border border-gray-200 hover:border-gray-300">
+              {/* Bouton Recherche avancée */}
+              <button 
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white rounded-full border border-gray-200 hover:border-gray-300"
+                onClick={goToSearchPage}
+              >
                 <Filter size={16} className="text-gray-500" />
-                <span>Plus de filtres</span>
+                <span>Recherche avancée</span>
               </button>
             </div>
             
+            {/* État de chargement */}
+            {isLoading && (
+              <div className="py-8 text-center">
+                <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-indigo-500 border-r-transparent"></div>
+                <p className="text-sm text-gray-500 mt-2">Recherche en cours...</p>
+              </div>
+            )}
+            
             {/* Contenu de recherche */}
-            <div className="max-h-[60vh] overflow-y-auto">
-              {!searchQuery ? (
-                // Affichage quand aucune recherche n'est en cours
-                <div className="p-4">
-                  {/* Recherches récentes */}
-                  <div className="mb-4">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-2">Recherches récentes</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {recentSearches.map((search, index) => (
-                        <button 
-                          key={index}
-                          className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-100 text-gray-800 rounded-full hover:bg-gray-200"
-                          onClick={() => setSearchQuery(search)}
-                        >
-                          <span>{search}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Hashtags populaires */}
-                  <div className="mb-4">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-2">Hashtags populaires</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {trendingHashtags.map((hashtag, index) => (
-                        <button 
-                          key={index}
-                          className="flex items-center gap-1 px-3 py-1.5 text-sm bg-indigo-50 text-indigo-600 rounded-full hover:bg-indigo-100"
-                          onClick={() => setSearchQuery(hashtag)}
-                        >
-                          <Hash size={16} />
-                          <span>{hashtag.substring(1)}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Utilisateurs suggérés */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-2">Utilisateurs suggérés</h3>
-                    <div className="space-y-2">
-                      {suggestedUsers.map(user => (
-                        <div 
-                          key={user.id}
-                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
-                        >
-                          <img 
-                            src={user.avatar} 
-                            alt={user.username} 
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                          <div>
-                            <p className="font-medium text-gray-900">{user.username}</p>
-                            <p className="text-sm text-gray-500">@{user.username.toLowerCase().replace(' ', '')}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                // Affichage des résultats de recherche
-                <div>
-                  {/* En-tête des résultats */}
-                  <div className="px-4 pt-3 pb-2 text-sm text-gray-600 flex justify-between">
-                    <div>{formatResultCount(7)}</div>
-                    <div>
-                      {dateFilter !== 'anytime' || sortBy !== 'relevant' ? (
-                        <button 
-                          className="text-indigo-600 hover:text-indigo-700 font-medium"
-                          onClick={() => {
-                            setDateFilter('anytime');
-                            setSortBy('relevant');
-                          }}
-                        >
-                          Réinitialiser les filtres
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                  
-                  {/* Résultats - exemple */}
-                  {activeTab === 'all' && (
-                    <div className="divide-y divide-gray-100">
-                      {/* Tweet résultat */}
-                      <div className="p-4 hover:bg-gray-50 cursor-pointer">
-                        <div className="flex items-start gap-3">
-                          <img 
-                            src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100"
-                            alt="Elena Chen"
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                          <div>
-                            <div className="flex items-center gap-1">
-                              <p className="font-medium">Elena Chen</p>
-                              <span className="text-gray-500 text-sm">@elenachen • 2h</span>
-                            </div>
-                            <p className="mt-1">
-                              Notre <span className="bg-yellow-100">IA</span> peut maintenant détecter des changements émotionnels subtils à travers les expressions faciales. Le futur de l'interaction homme-machine est là !
-                            </p>
-                            <div className="flex gap-2 mt-2">
-                              <span className="text-indigo-600 text-sm">#<span className="bg-yellow-100">AI</span></span>
-                              <span className="text-indigo-600 text-sm">#Innovation</span>
-                            </div>
-                          </div>
+            {!isLoading && (
+              <div className="max-h-[60vh] overflow-y-auto">
+                {!searchQuery ? (
+                  // Affichage quand aucune recherche n'est en cours
+                  <div className="p-4">
+                    {/* Recherches récentes */}
+                    {recentSearches.length > 0 && (
+                      <div className="mb-4">
+                        <h3 className="text-sm font-semibold text-gray-700 mb-2">Recherches récentes</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {recentSearches.map((search, index) => (
+                            <button 
+                              key={index}
+                              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-100 text-gray-800 rounded-full hover:bg-gray-200"
+                              onClick={() => setSearchQuery(search)}
+                            >
+                              <span>{search}</span>
+                            </button>
+                          ))}
                         </div>
                       </div>
-                      
-                      {/* User résultat */}
-                      <div className="p-4 hover:bg-gray-50 cursor-pointer">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="relative">
-                              <img 
-                                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100"
-                                alt="Alex Rivera"
-                                className="w-12 h-12 rounded-full object-cover"
-                              />
-                              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
-                            </div>
+                    )}
+                    
+                    {/* Hashtags populaires */}
+                    <div className="mb-4">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-2">Hashtags populaires</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {trendingHashtags.map((hashtag, index) => (
+                          <button 
+                            key={index}
+                            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-indigo-50 text-indigo-600 rounded-full hover:bg-indigo-100"
+                            onClick={() => setSearchQuery(hashtag)}
+                          >
+                            <Hash size={16} />
+                            <span>{hashtag.substring(1)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Utilisateurs suggérés */}
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-2">Utilisateurs suggérés</h3>
+                      <div className="space-y-2">
+                        {suggestedUsers.map(user => (
+                          <div 
+                            key={user.id}
+                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
+                            onClick={() => navigate(`/profile/${user.id}`)}
+                          >
+                            <img 
+                              src={user.avatar} 
+                              alt={user.username} 
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
                             <div>
-                              <p className="font-medium">Alex Rivera</p>
-                              <p className="text-sm text-gray-500">Expert en <span className="bg-yellow-100">IA</span> et Machine Learning</p>
+                              <p className="font-medium text-gray-900">{user.username}</p>
+                              <p className="text-sm text-gray-500">@{user.username.toLowerCase().replace(' ', '')}</p>
                             </div>
                           </div>
-                          <button className="bg-indigo-600 text-white text-sm font-medium px-3 py-1 rounded-full hover:bg-indigo-700">
-                            Suivre
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Affichage des résultats de recherche
+                  <div>
+                    {/* En-tête des résultats */}
+                    <div className="px-4 pt-3 pb-2 text-sm text-gray-600 flex justify-between">
+                      <div>
+                        {searchResults.tweets && searchResults.users && searchResults.hashtags && 
+                        formatResultCount(
+                          (searchResults.tweets?.length || 0) + 
+                          (searchResults.users?.length || 0) + 
+                          (searchResults.hashtags?.length || 0)
+                        )}
+                      </div>
+                      <div>
+                        {dateFilter !== 'anytime' || sortBy !== 'relevant' ? (
+                          <button 
+                            className="text-indigo-600 hover:text-indigo-700 font-medium"
+                            onClick={() => {
+                              setDateFilter('anytime');
+                              setSortBy('relevant');
+                            }}
+                          >
+                            Réinitialiser les filtres
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                    
+                    {/* Affichage des résultats - aperçu */}
+                    {activeTab === 'all' && (
+                      <div className="divide-y divide-gray-100">
+                        {/* Aperçu des tweets */}
+                        {searchResults.tweets && searchResults.tweets.length > 0 && (
+                          <>
+                            {searchResults.tweets.slice(0, 1).map((tweet: any) => (
+                              <div key={tweet._id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/tweet/${tweet._id}`)}>
+                                <div className="flex items-start gap-3">
+                                  <img 
+                                    src={tweet.userId?.profilePicture || "https://via.placeholder.com/100"} 
+                                    alt={tweet.userId?.username || "Utilisateur"}
+                                    className="w-10 h-10 rounded-full object-cover"
+                                  />
+                                  <div>
+                                    <div className="flex items-center gap-1">
+                                      <p className="font-medium">{tweet.userId?.username || "Utilisateur"}</p>
+                                      <span className="text-gray-500 text-sm">
+                                        @{tweet.userId?.username?.toLowerCase().replace(' ', '') || "utilisateur"}
+                                        {" • "}
+                                        {new Date(tweet.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                                      </span>
+                                    </div>
+                                    <p className="mt-1">
+                                      {tweet.content.length > 120 ? tweet.content.substring(0, 120) + '...' : tweet.content}
+                                    </p>
+                                    {tweet.hashtags && tweet.hashtags.length > 0 && (
+                                      <div className="flex gap-2 mt-2">
+                                        {tweet.hashtags.map((tag: string, idx: number) => (
+                                          <span key={idx} className="text-indigo-600 text-sm">{tag}</span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                            {searchResults.tweets.length > 1 && (
+                              <div className="py-2 px-4 text-center">
+                                <button 
+                                  className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                                  onClick={goToSearchPage}
+                                >
+                                  Voir tous les {searchResults.tweets.length} tweets
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        
+                        {/* Aperçu des utilisateurs */}
+                        {searchResults.users && searchResults.users.length > 0 && (
+                          <>
+                            {searchResults.users.slice(0, 1).map((user: any) => (
+                              <div key={user._id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/profile/${user._id}`)}>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="relative">
+                                      <img 
+                                        src={user.profilePicture || "https://via.placeholder.com/100"}
+                                        alt={user.username}
+                                        className="w-12 h-12 rounded-full object-cover"
+                                      />
+                                    </div>
+                                    <div>
+                                      <p className="font-medium">{user.username}</p>
+                                      <p className="text-sm text-gray-500">{user.bio?.substring(0, 60) || "Aucune biographie"}</p>
+                                    </div>
+                                  </div>
+                                  <button className="bg-indigo-600 text-white text-sm font-medium px-3 py-1 rounded-full hover:bg-indigo-700">
+                                    Suivre
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                            {searchResults.users.length > 1 && (
+                              <div className="py-2 px-4 text-center">
+                                <button 
+                                  className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                                  onClick={goToSearchPage}
+                                >
+                                  Voir tous les {searchResults.users.length} utilisateurs
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        
+                        {/* Aperçu des hashtags */}
+                        {searchResults.hashtags && searchResults.hashtags.length > 0 && (
+                          <>
+                            {searchResults.hashtags.slice(0, 1).map((hashtagData: any, index: number) => (
+                              <div key={index} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => setSearchQuery(`#${hashtagData.hashtag}`)}>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                                    <Hash size={20} />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">#{hashtagData.hashtag}</p>
+                                    <p className="text-sm text-gray-500">{hashtagData.count} tweets</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                            {searchResults.hashtags.length > 1 && (
+                              <div className="py-2 px-4 text-center">
+                                <button 
+                                  className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                                  onClick={goToSearchPage}
+                                >
+                                  Voir tous les {searchResults.hashtags.length} hashtags
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        
+                        {/* Lien vers la page de recherche complète */}
+                        <div className="py-3 px-4 bg-gray-50 text-center">
+                          <button 
+                            className="text-indigo-600 font-medium text-sm hover:text-indigo-800"
+                            onClick={goToSearchPage}
+                          >
+                            Voir tous les résultats pour "{searchQuery}"
                           </button>
                         </div>
                       </div>
-                      
-                      {/* Hashtag résultat */}
-                      <div className="p-4 hover:bg-gray-50 cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
-                            <Hash size={20} />
+                    )}
+                    
+                    {/* Résultats spécifiques par type */}
+                    {activeTab === 'users' && searchResults.users && (
+                      <div className="divide-y divide-gray-100">
+                        {searchResults.users.slice(0, 3).map((user: any) => (
+                          <div key={user._id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/profile/${user._id}`)}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <img 
+                                  src={user.profilePicture || "https://via.placeholder.com/100"}
+                                  alt={user.username}
+                                  className="w-12 h-12 rounded-full object-cover"
+                                />
+                                <div>
+                                  <p className="font-medium">{user.username}</p>
+                                  <p className="text-sm text-gray-500">{user.bio?.substring(0, 60) || "Aucune biographie"}</p>
+                                </div>
+                              </div>
+                              <button className="bg-indigo-600 text-white text-sm font-medium px-3 py-1 rounded-full hover:bg-indigo-700">
+                                Suivre
+                              </button>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">#<span className="bg-yellow-100">IA</span>Générative</p>
-                            <p className="text-sm text-gray-500">1.2k tweets cette semaine</p>
-                          </div>
+                        ))}
+                        <div className="py-3 px-4 bg-gray-50 text-center">
+                          <button 
+                            className="text-indigo-600 font-medium text-sm hover:text-indigo-800"
+                            onClick={goToSearchPage}
+                          >
+                            Voir tous les résultats
+                          </button>
                         </div>
                       </div>
-                    </div>
-                  )}
-                  
-                  {activeTab === 'users' && (
-                    <div className="divide-y divide-gray-100">
-                      {/* Quelques utilisateurs en exemple */}
-                      {[1, 2, 3].map(i => (
-                        <div key={i} className="p-4 hover:bg-gray-50 cursor-pointer">
-                          <div className="flex items-center justify-between">
+                    )}
+                    
+                    {activeTab === 'hashtags' && searchResults.hashtags && (
+                      <div className="divide-y divide-gray-100">
+                        {searchResults.hashtags.slice(0, 5).map((hashtagData: any, index: number) => (
+                          <div key={index} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => setSearchQuery(`#${hashtagData.hashtag}`)}>
                             <div className="flex items-center gap-3">
-                              <img 
-                                src={`https://images.unsplash.com/photo-${1507000000000 + i * 1000}?w=100`}
-                                alt={`User ${i}`}
-                                className="w-12 h-12 rounded-full object-cover"
-                              />
+                              <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                                <Hash size={20} />
+                              </div>
                               <div>
-                                <p className="font-medium">Utilisateur {i}</p>
-                                <p className="text-sm text-gray-500">Expert en <span className="bg-yellow-100">IA</span></p>
+                                <p className="font-medium">#{hashtagData.hashtag}</p>
+                                <p className="text-sm text-gray-500">{hashtagData.count} tweets</p>
                               </div>
                             </div>
-                            <button className="bg-indigo-600 text-white text-sm font-medium px-3 py-1 rounded-full hover:bg-indigo-700">
-                              Suivre
-                            </button>
                           </div>
+                        ))}
+                        <div className="py-3 px-4 bg-gray-50 text-center">
+                          <button 
+                            className="text-indigo-600 font-medium text-sm hover:text-indigo-800"
+                            onClick={goToSearchPage}
+                          >
+                            Voir tous les résultats
+                          </button>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {activeTab === 'hashtags' && (
-                    <div className="divide-y divide-gray-100">
-                      {/* Quelques hashtags en exemple */}
-                      {['AIGenerative', 'AIEthics', 'AIResearch'].map((tag, i) => (
-                        <div key={i} className="p-4 hover:bg-gray-50 cursor-pointer">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
-                              <Hash size={20} />
-                            </div>
-                            <div>
-                              <p className="font-medium">#<span className="bg-yellow-100">AI</span>{tag.substring(2)}</p>
-                              <p className="text-sm text-gray-500">{Math.floor(Math.random() * 2000) + 500} tweets ce mois</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

@@ -1,7 +1,7 @@
 import { User } from '../types';
 
 // URL de base de l'API
-const API_URL = 'http://localhost:5000/users';
+const API_URL = 'http://localhost:3000/api/users';
 
 // Interface pour la réponse d'authentification
 interface AuthResponse {

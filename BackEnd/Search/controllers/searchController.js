@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 exports.search = async (req, res) => {
     try {
-        const { 
+        const {
             q = '',              // terme de recherche
             type = 'all',        // 'all', 'tweets', 'users', 'hashtags'
             startDate,           // format: YYYY-MM-DD
@@ -10,7 +10,7 @@ exports.search = async (req, res) => {
             sortBy = 'recent',   // 'recent', 'popular'
             limit = 10,          // nombre de résultats
             category            // nouvelle option pour filtrer par catégorie
-        } = req.query;
+        } = req.query; // une requete http est de la
 
         const Tweet = mongoose.model('Tweet');
         const User = mongoose.model('User');

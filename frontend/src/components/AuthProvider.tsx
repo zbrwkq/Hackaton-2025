@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore';
 import { isAuthenticated } from '../services/authService';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const publicRoutes = ['/login', '/register'];
+const publicRoutes = ['/login', '/register', '/micro-service-dashboard'];
 
 interface AuthProviderProps {
   children: React.ReactNode;
