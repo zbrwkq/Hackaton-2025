@@ -67,3 +67,110 @@ exports.getProfile = async (req, res) => {
         res.status(500).json({ message: "Erreur serveur", error });
     }
 };
+
+// Suivre/Ne plus suivre un utilisateur
+exports.toggleFollow = async (req, res) => {
+    try {
+        const userToFollowId = req.params.id;
+        const currentUserId = req.user.userId;
+
+        // Vérifier que l'utilisateur ne tente pas de se suivre lui-même
+        if (userToFollowId === currentUserId) {
+            return res.status(400).json({ message: "Vous ne pouvez pas vous suivre vous-même" });
+        }
+
+        // Vérifier que l'utilisateur à suivre existe
+        const userToFollow = await User.findById(userToFollowId);
+        if (!userToFollow) {
+            return res.status(404).json({ message: "Utilisateur non trouvé" });
+        }
+
+        const currentUser = await User.findById(currentUserId);
+
+        // Vérifier si déjà suivi
+        const isFollowing = currentUser.following.includes(userToFollowId);
+
+        if (isFollowing) {
+            // Retirer des following/followers
+            await User.findByIdAndUpdate(currentUserId, {
+                $pull: { following: userToFollowId }
+            });
+            await User.findByIdAndUpdate(userToFollowId, {
+                $pull: { followers: currentUserId }
+            });
+
+            res.json({ 
+                message: "Vous ne suivez plus cet utilisateur",
+                isFollowing: false
+            });
+        } else {
+            // Ajouter aux following/followers
+            await User.findByIdAndUpdate(currentUserId, {
+                $addToSet: { following: userToFollowId }
+            });
+            await User.findByIdAndUpdate(userToFollowId, {
+                $addToSet: { followers: currentUserId }
+            });
+
+            res.json({ 
+                message: "Vous suivez maintenant cet utilisateur",
+                isFollowing: true
+            });
+        }
+    } catch (error) {
+        console.error("Erreur follow:", error);
+        res.status(500).json({ message: "Erreur serveur", error: error.message });
+    }
+};
+
+// Obtenir la liste des followers
+exports.getFollowers = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId)
+            .populate('followers', 'username profilePicture bio')
+            .select('followers');
+
+        if (!user) {
+            return res.status(404).json({ message: "Utilisateur non trouvé" });
+        }
+
+        res.json({
+            success: true,
+            count: user.followers.length,
+            followers: user.followers
+        });
+    } catch (error) {
+        console.error("Erreur récupération followers:", error);
+        res.status(500).json({ 
+            success: false,
+            message: "Erreur lors de la récupération des followers",
+            error: error.message 
+        });
+    }
+};
+
+// Obtenir la liste des following
+exports.getFollowing = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId)
+            .populate('following', 'username profilePicture bio')
+            .select('following');
+
+        if (!user) {
+            return res.status(404).json({ message: "Utilisateur non trouvé" });
+        }
+
+        res.json({
+            success: true,
+            count: user.following.length,
+            following: user.following
+        });
+    } catch (error) {
+        console.error("Erreur récupération following:", error);
+        res.status(500).json({ 
+            success: false,
+            message: "Erreur lors de la récupération des following",
+            error: error.message 
+        });
+    }
+};
