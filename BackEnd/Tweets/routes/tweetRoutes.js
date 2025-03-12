@@ -11,7 +11,6 @@ router.get('/hashtag/:hashtag', authMiddleware, tweetController.searchByHashtag)
 // Routes protégées (nécessitent une authentification)
 router.post('/', authMiddleware, tweetController.createTweet);
 router.post('/:id/like', authMiddleware, tweetController.toggleLike);
-router.post('/:id/retweet', authMiddleware, tweetController.toggleRetweet);
 router.delete('/:id', authMiddleware, tweetController.deleteTweet);
 router.post('/', authMiddleware, tweetController.createTweet);
 router.post('/:id/like', authMiddleware, tweetController.toggleLike);
