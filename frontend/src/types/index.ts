@@ -10,6 +10,20 @@ export interface User {
   updatedAt: string;
 }
 
+export interface Comment {
+  _id: string;
+  userId: string;
+  content: string;
+  createdAt: string;
+  user?: User;
+}
+
+// Interface pour représenter un retweet qui peut être soit une string, soit un objet
+export interface RetweetData {
+  userId: string;
+  tweetId?: string;
+}
+
 export interface Tweet {
   _id: string;
   userId: string;
@@ -18,10 +32,13 @@ export interface Tweet {
   hashtags: string[];
   mentions: string[];
   likes: string[];
-  retweets: string[];
+  retweets: (string | RetweetData)[];
+  comments?: Comment[];
   createdAt: string;
   updatedAt: string;
   user?: User;
+  savedBy?: string[];
+  isSavedByUser?: boolean;
 }
 
 export interface Interaction {

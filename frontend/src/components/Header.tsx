@@ -1,12 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { NotificationDropdown } from './NotificationDropdown';
-import { Settings as SettingsIcon } from 'lucide-react';
+import { Settings as SettingsIcon, LogOut, User } from 'lucide-react';
+import { useStore } from '../store/useStore';
 
 export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const { currentUser, logout } = useStore(state => ({ 
+    currentUser: state.currentUser,
+    logout: state.logout
+  }));
   
   // Effet de scroll pour le style du header
   useEffect(() => {
@@ -21,6 +28,24 @@ export function Header() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+  
+  // Fermer le menu quand on clique en dehors
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+  
+  // Gérer la déconnexion
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
   
   // Déterminer le titre de la page en fonction de l'URL
   const getTitle = () => {
@@ -83,25 +108,60 @@ export function Header() {
             <NotificationDropdown />
             
             {/* Icône des paramètres */}
-            <Link 
+            {/* <Link 
               to="/settings" 
               className="relative flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100 transition-colors"
               title="Paramètres"
             >
               <SettingsIcon className="w-5 h-5 text-gray-600" />
-            </Link>
+            </Link> */}
             
-            {/* Avatar utilisateur */}
-            <Link to="/profile" className="flex items-center">
-              <div className="relative">
-                <img
-                  className="h-8 w-8 rounded-full object-cover border border-gray-200"
-                  src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100"
-                  alt="Avatar utilisateur"
-                />
-                <div className="absolute bottom-0 right-0 block h-2 w-2 rounded-full bg-green-400 border border-white"></div>
-              </div>
-            </Link>
+            {/* Avatar utilisateur avec menu */}
+            <div className="relative" ref={profileMenuRef}>
+              <button 
+                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                className="flex items-center"
+              >
+                <div className="relative">
+                  <img
+                    className="h-8 w-8 rounded-full object-cover border border-gray-200"
+                    src={currentUser?.profilePicture || "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100"}
+                    alt="Avatar utilisateur"
+                  />
+                  <div className="absolute bottom-0 right-0 block h-2 w-2 rounded-full bg-green-400 border border-white"></div>
+                </div>
+              </button>
+              
+              {/* Menu déroulant */}
+              {profileMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                  <Link 
+                    to="/profile"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setProfileMenuOpen(false)}
+                  >
+                    <User className="mr-2 h-4 w-4" />
+                    Profil
+                  </Link>
+                  <Link 
+                    to="/settings"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setProfileMenuOpen(false)}
+                  >
+                    <SettingsIcon className="mr-2 h-4 w-4" />
+                    Paramètres
+                  </Link>
+                  <hr className="my-1 border-gray-200" />
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Déconnexion
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

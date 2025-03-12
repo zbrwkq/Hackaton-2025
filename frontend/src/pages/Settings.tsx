@@ -1,15 +1,18 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { Bell, Moon, Shield, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bell, Moon, Shield, User, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useNavigate } from 'react-router-dom';
 
 export function Settings() {
+  const navigate = useNavigate();
   const [darkMode, setDarkMode] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   
   // Get notification settings from store
   const notificationSettings = useStore((state) => state.notificationSettings);
   const updateNotificationSettings = useStore((state) => state.updateNotificationSettings);
+  const logout = useStore((state) => state.logout);
   
   // Derive the global notifications state from individual settings
   const [notifications, setNotifications] = useState(false);
@@ -56,78 +59,96 @@ export function Settings() {
       }
     }
   };
+  
+  // Gérer la déconnexion
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="max-w-2xl mx-auto pt-20 px-4 pb-8"
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 10 }}
+      transition={{ duration: 0.2 }}
+      className="min-h-screen pt-20 pb-10 px-4 bg-gray-50"
     >
-      <h1 className="text-2xl font-bold mb-6">Settings</h1>
-      
-      <div className="bg-white rounded-2xl p-6 shadow-sm space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <User className="w-5 h-5 text-indigo-600" />
-            <span className="font-medium">Profile Settings</span>
+      <div className="max-w-2xl mx-auto bg-white rounded-xl p-6 shadow-sm space-y-8">
+        <h1 className="text-2xl font-bold text-gray-900">Paramètres</h1>
+        
+        {/* Section Compte */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <User className="w-5 h-5 text-indigo-600" />
+              <span className="font-medium">Compte</span>
+            </div>
+            <button className="text-indigo-600 text-sm">Manage</button>
           </div>
-          <button className="text-indigo-600 text-sm">Edit</button>
         </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Moon className="w-5 h-5 text-indigo-600" />
-            <span className="font-medium">Dark Mode</span>
+        
+        {/* Section thème sombre */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Moon className="w-5 h-5 text-indigo-600" />
+              <span className="font-medium">Thème</span>
+            </div>
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className={`w-10 h-5 rounded-full transition-colors ${
+                darkMode ? 'bg-indigo-600' : 'bg-gray-200'
+              }`}
+            >
+              <motion.div
+                animate={{ x: darkMode ? 20 : 2 }}
+                className="w-4 h-4 bg-white rounded-full shadow-sm"
+              />
+            </button>
           </div>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className={`w-12 h-6 rounded-full transition-colors ${
-              darkMode ? 'bg-indigo-600' : 'bg-gray-200'
-            }`}
-          >
-            <motion.div
-              animate={{ x: darkMode ? 24 : 2 }}
-              className="w-5 h-5 bg-white rounded-full shadow-sm"
-            />
-          </button>
         </div>
-
-        <div>
+        
+        {/* Section notifications */}
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Bell className="w-5 h-5 text-indigo-600" />
               <span className="font-medium">Notifications</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button
                 onClick={handleGlobalNotificationsToggle}
-                className={`w-12 h-6 rounded-full transition-colors ${
+                className={`w-10 h-5 rounded-full transition-colors ${
                   notifications ? 'bg-indigo-600' : 'bg-gray-200'
                 }`}
               >
                 <motion.div
-                  animate={{ x: notifications ? 24 : 2 }}
-                  className="w-5 h-5 bg-white rounded-full shadow-sm"
+                  animate={{ x: notifications ? 20 : 2 }}
+                  className="w-4 h-4 bg-white rounded-full shadow-sm"
                 />
               </button>
-              <button 
+              <button
                 onClick={() => setShowNotificationSettings(!showNotificationSettings)}
-                className="ml-2 text-gray-500"
-                disabled={!notifications}
+                className="text-gray-500 hover:bg-gray-100 rounded-full p-1 transition-colors"
               >
-                {showNotificationSettings ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                {showNotificationSettings ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
               </button>
             </div>
           </div>
           
-          {notifications && showNotificationSettings && (
-            <div className="mt-4 ml-8 space-y-4 border-l-2 border-indigo-100 pl-4">
+          {/* Détails des paramètres de notification */}
+          {showNotificationSettings && (
+            <div className="ml-8 space-y-4">
               <div>
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm font-medium text-gray-700">Likes</span>
-                    <p className="text-xs text-gray-500 mt-1">Recevoir des notifications quand quelqu'un aime vos posts</p>
+                    <p className="text-xs text-gray-500 mt-1">Recevoir des notifications quand quelqu'un aime votre post</p>
                   </div>
                   <button
                     onClick={() => handleNotificationToggle('likes')}
@@ -147,7 +168,7 @@ export function Settings() {
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm font-medium text-gray-700">Retweets</span>
-                    <p className="text-xs text-gray-500 mt-1">Recevoir des notifications quand quelqu'un partage vos posts</p>
+                    <p className="text-xs text-gray-500 mt-1">Recevoir des notifications quand quelqu'un retweete votre post</p>
                   </div>
                   <button
                     onClick={() => handleNotificationToggle('retweets')}
@@ -167,7 +188,7 @@ export function Settings() {
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm font-medium text-gray-700">Replies</span>
-                    <p className="text-xs text-gray-500 mt-1">Recevoir des notifications quand quelqu'un répond à vos posts</p>
+                    <p className="text-xs text-gray-500 mt-1">Recevoir des notifications quand quelqu'un répond à votre post</p>
                   </div>
                   <button
                     onClick={() => handleNotificationToggle('replies')}
@@ -226,12 +247,37 @@ export function Settings() {
           )}
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Shield className="w-5 h-5 text-indigo-600" />
-            <span className="font-medium">Privacy</span>
+        {/* Section confidentialité */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Shield className="w-5 h-5 text-indigo-600" />
+              <span className="font-medium">Confidentialité</span>
+            </div>
+            <button className="text-indigo-600 text-sm">Gérer</button>
           </div>
-          <button className="text-indigo-600 text-sm">Manage</button>
+        </div>
+        
+        {/* Séparateur */}
+        <hr className="border-gray-200" />
+        
+        {/* Section de déconnexion */}
+        <div className="flex flex-col space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <LogOut className="w-5 h-5 text-red-500" />
+              <span className="font-medium">Déconnexion</span>
+            </div>
+            <button 
+              onClick={handleLogout}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              Se déconnecter
+            </button>
+          </div>
+          <p className="text-sm text-gray-500 ml-8">
+            Vous serez déconnecté de votre compte sur cet appareil. Vous devrez saisir vos identifiants pour vous reconnecter.
+          </p>
         </div>
       </div>
     </motion.div>

@@ -174,3 +174,66 @@ exports.getFollowing = async (req, res) => {
         });
     }
 };
+
+// Mettre à jour le profil de l'utilisateur
+exports.updateProfile = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const updates = {};
+        
+        // Récupérer les champs basiques à mettre à jour
+        const { username, bio } = req.body;
+        if (username) updates.username = username;
+        if (bio !== undefined) updates.bio = bio;
+        
+        // Gestion des fichiers uploadés
+        if (req.files) {
+            // Photo de profil
+            if (req.files.profilePicture) {
+                const profilePath = `/uploads/profiles/${req.files.profilePicture[0].filename}`;
+                updates.profilePicture = profilePath;
+            }
+            
+            // Bannière
+            if (req.files.banner) {
+                const bannerPath = `/uploads/banners/${req.files.banner[0].filename}`;
+                updates.banner = bannerPath;
+            }
+        } else if (req.file) {
+            // Si un seul fichier a été uploadé via single()
+            if (req.file.fieldname === 'profilePicture') {
+                updates.profilePicture = `/uploads/profiles/${req.file.filename}`;
+            } else if (req.file.fieldname === 'banner') {
+                updates.banner = `/uploads/banners/${req.file.filename}`;
+            }
+        }
+        
+        // Toujours mettre à jour la date de mise à jour
+        updates.updatedAt = Date.now();
+        
+        // Mise à jour de l'utilisateur
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: updates },
+            { new: true, runValidators: true }
+        ).select('-password');
+        
+        if (!updatedUser) {
+            return res.status(404).json({ message: "Utilisateur non trouvé" });
+        }
+        
+        res.json({
+            success: true,
+            message: "Profil mis à jour avec succès",
+            user: updatedUser
+        });
+        
+    } catch (error) {
+        console.error("Erreur mise à jour profil:", error);
+        res.status(500).json({
+            success: false,
+            message: "Erreur lors de la mise à jour du profil",
+            error: error.message
+        });
+    }
+};
