@@ -8,7 +8,8 @@ exports.search = async (req, res) => {
             startDate,           // format: YYYY-MM-DD
             endDate,             // format: YYYY-MM-DD
             sortBy = 'recent',   // 'recent', 'popular'
-            limit = 10           // nombre de résultats
+            limit = 10,          // nombre de résultats
+            category            // nouvelle option pour filtrer par catégorie
         } = req.query;
 
         const Tweet = mongoose.model('Tweet');
@@ -41,6 +42,11 @@ exports.search = async (req, res) => {
                     { hashtags: { $regex: q, $options: 'i' } }
                 ]
             };
+
+            // Modification ici pour la catégorie
+            if (category !== undefined && category !== '') {
+                tweetQuery.category = Number(category); // Conversion explicite en nombre
+            }
 
             const sortOptions = sortBy === 'popular' 
                 ? { 'likes.length': -1 } 
@@ -121,7 +127,8 @@ exports.search = async (req, res) => {
                 type,
                 dateRange: { startDate, endDate },
                 sortBy,
-                limit
+                limit,
+                category: category !== undefined ? Number(category) : null // Conversion en nombre dans la réponse
             },
             results
         });
@@ -148,7 +155,7 @@ exports.getTrends = async (req, res) => {
             });
         }
 
-        const { period = '24h' } = req.query;
+        const { period = '24h', category } = req.query;
         
         // Calculer la date limite selon la période
         const dateLimit = new Date();
@@ -166,14 +173,20 @@ exports.getTrends = async (req, res) => {
                 dateLimit.setHours(dateLimit.getHours() - 24);
         }
 
+        // Construire le filtre de base
+        const matchFilter = { 
+            createdAt: { $gte: dateLimit },
+            hashtags: { $exists: true, $ne: [] }
+        };
+
+        // Ajouter le filtre de catégorie si spécifié
+        if (category) {
+            matchFilter.category = category;
+        }
+
         // Aggrégation des tendances
         const trends = await Tweet.aggregate([
-            { 
-                $match: { 
-                    createdAt: { $gte: dateLimit },
-                    hashtags: { $exists: true, $ne: [] }
-                }
-            },
+            { $match: matchFilter },
             { $unwind: '$hashtags' },
             { 
                 $group: {
@@ -197,6 +210,7 @@ exports.getTrends = async (req, res) => {
         res.status(200).json({
             success: true,
             period,
+            category,
             trends
         });
 

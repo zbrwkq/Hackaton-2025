@@ -70,7 +70,11 @@ const tweetSchema = new mongoose.Schema({
     savedBy: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
-    }]
+    }],
+    category: {
+        type: Number,
+        default: null
+    }
 }, {
     timestamps: true
 });
