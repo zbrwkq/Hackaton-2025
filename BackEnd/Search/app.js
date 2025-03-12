@@ -9,64 +9,50 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Configuration MongoDB avec timeouts plus longs
+// Connexion MongoDB
 mongoose.connect("mongodb://127.0.0.1:27017/HackatonTwitter", {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     serverSelectionTimeoutMS: 30000,
-    socketTimeoutMS: 45000,
-    connectTimeoutMS: 30000
 })
 .then(() => {
     console.log("✅ Service Search connecté à MongoDB");
     
-    // Configurer les événements de connexion
-    mongoose.connection.on('error', err => {
-        console.error('Erreur MongoDB:', err);
-    });
+    // Charger les schémas et modèles
+    const tweetSchema = require('./models/tweetModel').schema;
+    const userSchema = require('./models/User').schema;
+    
+    // Créer les modèles localement
+    mongoose.model('Tweet', tweetSchema);
+    mongoose.model('User', userSchema);
+    
+    console.log("✅ Modèles chargés:", mongoose.modelNames());
 
-    mongoose.connection.on('disconnected', () => {
-        console.log('MongoDB déconnecté');
+    // Routes
+    const searchRoutes = require("./routes/searchRoutes");
+    app.use("/api/search", searchRoutes);
+    
+    const PORT = process.env.SEARCH_SERVICE_PORT || 6000;
+    app.listen(PORT, () => {
+        console.log(`🚀 Service Search en écoute sur http://localhost:${PORT}`);
     });
 })
-.catch(err => console.error("❌ Erreur de connexion MongoDB:", err));
+.catch(err => {
+    console.error("❌ Erreur de connexion MongoDB:", err);
+    process.exit(1);
+});
 
-// Charger les modèles existants
-require('../users/models/User');
-require('../Tweets/models/tweetModel');
-
-// Route de test publique
+// Route de test
 app.get('/health', (req, res) => {
     res.json({ 
         status: 'Search Service is running',
-        dbStatus: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+        dbStatus: mongoose.connection.readyState,
+        availableModels: mongoose.modelNames()
     });
 });
-
-// Routes
-const searchRoutes = require("./routes/searchRoutes");
-app.use("/api/search", searchRoutes);
 
 // Gestion des erreurs
 app.use((err, req, res, next) => {
     console.error("❌ Erreur:", err);
     res.status(500).json({ message: "Erreur serveur", error: err.message });
-});
-
-// Démarrer le serveur
-const PORT = process.env.SEARCH_SERVICE_PORT || 6000;
-app.listen(PORT, () => {
-    console.log(`🚀 Service Search en écoute sur http://localhost:${PORT}`);
-});
-
-// Gérer la fermeture propre
-process.on('SIGINT', async () => {
-    try {
-        await mongoose.connection.close();
-        console.log('MongoDB déconnecté proprement');
-        process.exit(0);
-    } catch (err) {
-        console.error('Erreur lors de la fermeture:', err);
-        process.exit(1);
-    }
 });
