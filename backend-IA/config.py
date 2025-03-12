@@ -4,7 +4,7 @@ class Config:
     UPLOAD_FOLDER = 'uploads'
     ALLOWED_EXTENSIONS = {'mp4'}
     MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # Limite la taille des fichiers à 100 Mo
-    PORT = 5000
+    PORT = 5001
 
 
 # Chargement de la configuration selon l'environnement

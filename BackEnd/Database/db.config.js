@@ -11,7 +11,10 @@ const connectDB = async () => {
             return mongoose.connection;
         }
 
-        const connection = await mongoose.connect('mongodb://127.0.0.1:27017/HackatonTwitter', {
+        // Utiliser l'URI fourni par l'environnement Docker ou l'URI par défaut
+        const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/HackatonTwitter';
+        
+        const connection = await mongoose.connect(mongoURI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
             serverSelectionTimeoutMS: 30000,
@@ -38,6 +41,13 @@ const connectDB = async () => {
         throw error;
     }
 };
+
+// Lancer la connexion à la base de données si ce fichier est exécuté directement
+if (require.main === module) {
+    connectDB()
+        .then(() => console.log('Service de base de données démarré'))
+        .catch(err => console.error('Échec du démarrage du service:', err));
+}
 
 module.exports = connectDB;
 
