@@ -2,7 +2,13 @@ import { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { TweetCard } from '../components/TweetCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/Tabs';
-import { Edit, Calendar, Camera, X, Save, Loader } from 'lucide-react';
+import { Edit, Calendar, Camera, X, Save, Loader, Bookmark } from 'lucide-react';
+import { Tweet, User } from '../types';
+
+// Interface étendue pour le tweet tel que renvoyé par l'API
+interface ExtendedTweet extends Omit<Tweet, 'userId'> {
+  userId: string | { _id: string; username: string; profilePicture: string };
+}
 
 export function Profile() {
   const { 
@@ -12,15 +18,25 @@ export function Profile() {
     loadUserProfile, 
     updateProfile, 
     updateProfilePicture, 
-    updateBanner 
+    updateBanner,
+    fetchTweets,
+    fetchLikedTweets,
+    fetchRetweetedTweets,
+    fetchCommentedTweets,
+    fetchSavedTweets
   } = useStore(state => ({
     currentUser: state.currentUser,
-    tweets: state.tweets,
+    tweets: state.tweets as ExtendedTweet[],
     isLoading: state.isLoading,
     loadUserProfile: state.loadUserProfile,
     updateProfile: state.updateProfile,
     updateProfilePicture: state.updateProfilePicture,
-    updateBanner: state.updateBanner
+    updateBanner: state.updateBanner,
+    fetchTweets: state.fetchTweets,
+    fetchLikedTweets: state.fetchLikedTweets,
+    fetchRetweetedTweets: state.fetchRetweetedTweets,
+    fetchCommentedTweets: state.fetchCommentedTweets,
+    fetchSavedTweets: state.fetchSavedTweets
   }));
   
   const [activeTab, setActiveTab] = useState('tweets');
@@ -28,6 +44,7 @@ export function Profile() {
   const [editUsername, setEditUsername] = useState('');
   const [editBio, setEditBio] = useState('');
   const [error, setError] = useState('');
+  const [debug, setDebug] = useState<any>(null);
   
   const profileInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -45,10 +62,56 @@ export function Profile() {
     }
   }, [currentUser]);
   
-  // Filter tweets based on the current user
-  const userTweets = tweets.filter(tweet => tweet.userId === currentUser?._id);
-  const userLikes = tweets.filter(tweet => tweet.likes.includes(currentUser?._id || ''));
-  const userRetweets = tweets.filter(tweet => tweet.retweets.includes(currentUser?._id || ''));
+  // Charger le type de tweets approprié quand l'onglet change
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    const fetchData = async () => {
+      try {
+        switch(activeTab) {
+          case 'tweets':
+            await fetchTweets();
+            break;
+          case 'replies':
+            await fetchCommentedTweets();
+            break;
+          case 'likes':
+            await fetchLikedTweets();
+            break;
+          case 'retweets':
+            await fetchRetweetedTweets();
+            break;
+          case 'bookmarks':
+            await fetchSavedTweets();
+            break;
+        }
+        // Stocker les tweets dans le state de débogage pour visualisation
+        setDebug({
+          activeTab,
+          tweets: tweets.slice(0, 3),
+          count: tweets.length
+        });
+      } catch (error) {
+        console.error(`Erreur lors du chargement des tweets (${activeTab}):`, error);
+        setError(`Erreur lors du chargement des tweets (${activeTab})`);
+      }
+    };
+    
+    fetchData();
+  }, [activeTab, currentUser, fetchTweets, fetchCommentedTweets, fetchLikedTweets, fetchRetweetedTweets, fetchSavedTweets]);
+  
+  // Filter tweets based on the current tab and user
+  const userTweets = tweets.filter(tweet => {
+    // Vérifier si userId est un objet (avec _id) ou juste une chaîne ID directe
+    if (activeTab === 'tweets') {
+      if (typeof tweet.userId === 'object' && tweet.userId !== null) {
+        return tweet.userId._id === currentUser?._id;
+      } else {
+        return tweet.userId === currentUser?._id;
+      }
+    }
+    return true; // Pour les autres onglets, les tweets sont déjà filtrés par l'API
+  });
   
   // Gérer l'upload de photo de profil
   const handleProfilePictureChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,6 +159,10 @@ export function Profile() {
       <span className="ml-2">Loading profile...</span>
     </div>
   );
+
+  // Variable d'environnement pour détecter le mode développement
+  const isDevelopment = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16 pb-10">
@@ -276,44 +343,95 @@ export function Profile() {
         {/* Tabs for tweets, likes, etc. */}
         <div className="mt-8">
           <Tabs defaultValue="tweets" onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="tweets">Tweets</TabsTrigger>
-              <TabsTrigger value="replies">Replies</TabsTrigger>
-              <TabsTrigger value="likes">Likes</TabsTrigger>
+              <TabsTrigger value="replies">Réponses</TabsTrigger>
+              <TabsTrigger value="likes">J'aime</TabsTrigger>
               <TabsTrigger value="retweets">Retweets</TabsTrigger>
+              <TabsTrigger value="bookmarks">Signets</TabsTrigger>
             </TabsList>
             
+            {/* Afficher les informations de débogage en mode développement */}
+            {isDevelopment && debug && (
+              <div className="mt-2 p-2 bg-gray-100 text-xs rounded overflow-auto">
+                <details>
+                  <summary className="cursor-pointer font-bold">
+                    Données de débogage ({activeTab}) - {debug.count} tweets
+                  </summary>
+                  <pre className="mt-2 text-xs overflow-auto max-h-40">
+                    {JSON.stringify(debug, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            )}
+            
             <TabsContent value="tweets" className="mt-4 space-y-4">
-              {userTweets.length > 0 ? (
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader className="w-8 h-8 text-indigo-600 animate-spin" />
+                </div>
+              ) : userTweets.length > 0 ? (
                 userTweets.map(tweet => (
-                  <TweetCard key={tweet._id} tweet={tweet} />
+                  <TweetCard key={tweet._id} tweet={tweet as any} />
                 ))
               ) : (
-                <div className="text-center py-8 text-gray-500">No tweets yet</div>
+                <div className="text-center py-8 text-gray-500">Pas encore de tweets</div>
               )}
             </TabsContent>
             
             <TabsContent value="replies" className="mt-4 space-y-4">
-              <div className="text-center py-8 text-gray-500">No replies yet</div>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader className="w-8 h-8 text-indigo-600 animate-spin" />
+                </div>
+              ) : tweets.length > 0 ? (
+                tweets.map(tweet => (
+                  <TweetCard key={tweet._id} tweet={tweet as any} />
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">Pas encore de réponses</div>
+              )}
             </TabsContent>
             
             <TabsContent value="likes" className="mt-4 space-y-4">
-              {userLikes.length > 0 ? (
-                userLikes.map(tweet => (
-                  <TweetCard key={tweet._id} tweet={tweet} />
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader className="w-8 h-8 text-indigo-600 animate-spin" />
+                </div>
+              ) : tweets.length > 0 ? (
+                tweets.map(tweet => (
+                  <TweetCard key={tweet._id} tweet={tweet as any} />
                 ))
               ) : (
-                <div className="text-center py-8 text-gray-500">No likes yet</div>
+                <div className="text-center py-8 text-gray-500">Pas encore de j'aime</div>
               )}
             </TabsContent>
             
             <TabsContent value="retweets" className="mt-4 space-y-4">
-              {userRetweets.length > 0 ? (
-                userRetweets.map(tweet => (
-                  <TweetCard key={tweet._id} tweet={tweet} />
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader className="w-8 h-8 text-indigo-600 animate-spin" />
+                </div>
+              ) : tweets.length > 0 ? (
+                tweets.map(tweet => (
+                  <TweetCard key={tweet._id} tweet={tweet as any} />
                 ))
               ) : (
-                <div className="text-center py-8 text-gray-500">No retweets yet</div>
+                <div className="text-center py-8 text-gray-500">Pas encore de retweets</div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="bookmarks" className="mt-4 space-y-4">
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader className="w-8 h-8 text-indigo-600 animate-spin" />
+                </div>
+              ) : tweets.length > 0 ? (
+                tweets.map(tweet => (
+                  <TweetCard key={tweet._id} tweet={tweet as any} />
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">Pas encore de tweets enregistrés</div>
               )}
             </TabsContent>
           </Tabs>

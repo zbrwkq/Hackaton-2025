@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Tweet, User, Notification } from '../types';
 import * as userService from '../services/userService';
 import * as authService from '../services/authService';
+import * as tweetService from '../services/tweetService';
 
 // Notifications d'exemple pour la démo
 const MOCK_NOTIFICATIONS: Notification[] = [
@@ -64,22 +65,29 @@ interface NotificationSettings {
   mentions: boolean;
 }
 
-interface Store {
-  currentUser: User | null;
+interface TweetState {
   tweets: Tweet[];
-  notifications: Notification[];
-  notificationSettings: NotificationSettings;
+  isLoading: boolean;
+  error: string | null;
+  fetchTweets: () => Promise<void>;
+  createTweet: (content: string, media?: string[], hashtags?: string[], mentions?: string[]) => Promise<void>;
+  likeTweet: (tweetId: string) => Promise<void>;
+  retweetTweet: (tweetId: string, content?: string) => Promise<void>;
+  commentTweet: (tweetId: string, content: string) => Promise<void>;
+  deleteTweet: (tweetId: string) => Promise<void>;
+  saveTweet: (tweetId: string) => Promise<void>;
+  fetchLikedTweets: () => Promise<void>;
+  fetchRetweetedTweets: () => Promise<void>;
+  fetchCommentedTweets: () => Promise<void>;
+  fetchSavedTweets: () => Promise<void>;
+}
+
+interface AuthState {
+  currentUser: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
   setCurrentUser: (user: User | null) => void;
-  setTweets: (tweets: Tweet[]) => void;
-  addTweet: (tweet: Tweet) => void;
-  setNotifications: (notifications: Notification[]) => void;
-  addNotification: (notification: Notification) => void;
-  markNotificationAsRead: (notificationId: string) => void;
-  markAllNotificationsAsRead: () => void;
-  updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string, bio?: string) => Promise<void>;
   logout: () => void;
@@ -92,9 +100,29 @@ interface Store {
   followUser: (userId: string) => Promise<void>;
 }
 
+interface NotificationState {
+  notifications: Notification[];
+  notificationSettings: NotificationSettings;
+  setNotifications: (notifications: Notification[]) => void;
+  addNotification: (notification: Notification) => void;
+  markNotificationAsRead: (notificationId: string) => void;
+  markAllNotificationsAsRead: () => void;
+  updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
+}
+
+type Store = AuthState & NotificationState & TweetState;
+
 export const useStore = create<Store>((set, get) => ({
+  // Auth state
   currentUser: null,
+  isAuthenticated: authService.isAuthenticated(),
+  isLoading: false,
+  error: null,
+  
+  // Tweet state
   tweets: [],
+  
+  // Notification state
   notifications: MOCK_NOTIFICATIONS,
   notificationSettings: {
     likes: true,
@@ -103,29 +131,10 @@ export const useStore = create<Store>((set, get) => ({
     follows: true,
     mentions: true
   },
-  isAuthenticated: authService.isAuthenticated(),
-  isLoading: false,
-  error: null,
+  
+  // Auth actions
   setCurrentUser: (user) => set({ currentUser: user }),
-  setTweets: (tweets) => set({ tweets }),
-  addTweet: (tweet) => set((state) => ({ tweets: [tweet, ...state.tweets] })),
-  setNotifications: (notifications) => set({ notifications }),
-  addNotification: (notification) => set((state) => ({ 
-    notifications: [notification, ...state.notifications] 
-  })),
-  markNotificationAsRead: (notificationId) => set((state) => ({
-    notifications: state.notifications.map(notification => 
-      notification._id === notificationId 
-        ? { ...notification, read: true } 
-        : notification
-    )
-  })),
-  markAllNotificationsAsRead: () => set((state) => ({
-    notifications: state.notifications.map(notification => ({ ...notification, read: true }))
-  })),
-  updateNotificationSettings: (settings) => set((state) => ({
-    notificationSettings: { ...state.notificationSettings, ...settings }
-  })),
+  
   login: async (email, password) => {
     set({ isLoading: true, error: null });
     try {
@@ -147,6 +156,7 @@ export const useStore = create<Store>((set, get) => ({
       throw error;
     }
   },
+  
   register: async (username, email, password, bio) => {
     set({ isLoading: true, error: null });
     try {
@@ -173,10 +183,12 @@ export const useStore = create<Store>((set, get) => ({
       throw error;
     }
   },
+  
   logout: () => {
     authService.clearAuthData();
     set({ isAuthenticated: false, currentUser: null });
   },
+  
   loadUserProfile: async () => {
     const token = authService.getToken();
     if (!token) return;
@@ -193,6 +205,7 @@ export const useStore = create<Store>((set, get) => ({
       });
     }
   },
+  
   updateProfile: async (data) => {
     const token = authService.getToken();
     if (!token) return;
@@ -210,6 +223,7 @@ export const useStore = create<Store>((set, get) => ({
       throw error;
     }
   },
+  
   updateProfilePicture: async (file) => {
     const token = authService.getToken();
     if (!token) return;
@@ -227,6 +241,7 @@ export const useStore = create<Store>((set, get) => ({
       throw error;
     }
   },
+  
   updateBanner: async (file) => {
     const token = authService.getToken();
     if (!token) return;
@@ -244,6 +259,7 @@ export const useStore = create<Store>((set, get) => ({
       throw error;
     }
   },
+  
   fetchFollowers: async () => {
     const token = authService.getToken();
     if (!token) return;
@@ -251,7 +267,6 @@ export const useStore = create<Store>((set, get) => ({
     set({ isLoading: true });
     try {
       const followers = await userService.getFollowers(token);
-      // Mettre à jour le currentUser avec les détails des followers
       set(state => ({
         currentUser: state.currentUser ? {
           ...state.currentUser,
@@ -267,6 +282,7 @@ export const useStore = create<Store>((set, get) => ({
       });
     }
   },
+  
   fetchFollowing: async () => {
     const token = authService.getToken();
     if (!token) return;
@@ -274,7 +290,6 @@ export const useStore = create<Store>((set, get) => ({
     set({ isLoading: true });
     try {
       const following = await userService.getFollowing(token);
-      // Mettre à jour le currentUser avec les détails des following
       set(state => ({
         currentUser: state.currentUser ? {
           ...state.currentUser,
@@ -290,6 +305,7 @@ export const useStore = create<Store>((set, get) => ({
       });
     }
   },
+  
   followUser: async (userId) => {
     const token = authService.getToken();
     if (!token) return;
@@ -307,6 +323,217 @@ export const useStore = create<Store>((set, get) => ({
       set({ 
         isLoading: false, 
         error: error instanceof Error ? error.message : 'Erreur lors du follow/unfollow'
+      });
+    }
+  },
+  
+  // Notification actions
+  setNotifications: (notifications) => set({ notifications }),
+  
+  addNotification: (notification) => set((state) => ({ 
+    notifications: [notification, ...state.notifications] 
+  })),
+  
+  markNotificationAsRead: (notificationId) => set((state) => ({
+    notifications: state.notifications.map(notification => 
+      notification._id === notificationId 
+        ? { ...notification, read: true } 
+        : notification
+    )
+  })),
+  
+  markAllNotificationsAsRead: () => set((state) => ({
+    notifications: state.notifications.map(notification => ({ ...notification, read: true }))
+  })),
+  
+  updateNotificationSettings: (settings) => set((state) => ({
+    notificationSettings: { ...state.notificationSettings, ...settings }
+  })),
+  
+  // Tweet actions
+  fetchTweets: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const tweets = await tweetService.getAllTweets();
+      set({ tweets, isLoading: false });
+    } catch (error) {
+      console.error('Erreur de récupération des tweets:', error);
+      set({ 
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Erreur de récupération des tweets'
+      });
+    }
+  },
+  
+  createTweet: async (content, media, hashtags, mentions) => {
+    set({ isLoading: true, error: null });
+    try {
+      const newTweet = await tweetService.createTweet({
+        content,
+        media,
+        hashtags,
+        mentions
+      });
+      
+      set(state => ({ 
+        tweets: [newTweet, ...state.tweets],
+        isLoading: false 
+      }));
+    } catch (error) {
+      console.error('Erreur de création du tweet:', error);
+      set({ 
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Erreur de création du tweet'
+      });
+      throw error;
+    }
+  },
+  
+  likeTweet: async (tweetId) => {
+    try {
+      const updatedTweet = await tweetService.toggleLike(tweetId);
+      
+      set(state => ({
+        tweets: state.tweets.map(tweet => 
+          tweet._id === tweetId ? updatedTweet : tweet
+        )
+      }));
+    } catch (error) {
+      console.error('Erreur de like/unlike:', error);
+      set({ 
+        error: error instanceof Error ? error.message : 'Erreur de like/unlike'
+      });
+    }
+  },
+  
+  retweetTweet: async (tweetId, content) => {
+    set({ isLoading: true, error: null });
+    try {
+      const retweetedTweet = await tweetService.toggleRetweet(tweetId, content);
+      
+      // Rafraîchir tous les tweets
+      await get().fetchTweets();
+      
+      set({ isLoading: false });
+    } catch (error) {
+      console.error('Erreur de retweet:', error);
+      set({ 
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Erreur de retweet'
+      });
+      throw error;
+    }
+  },
+  
+  commentTweet: async (tweetId, content) => {
+    try {
+      const updatedTweet = await tweetService.addComment(tweetId, content);
+      
+      set(state => ({
+        tweets: state.tweets.map(tweet => 
+          tweet._id === tweetId ? updatedTweet : tweet
+        )
+      }));
+    } catch (error) {
+      console.error('Erreur d\'ajout de commentaire:', error);
+      set({ 
+        error: error instanceof Error ? error.message : 'Erreur d\'ajout de commentaire'
+      });
+      throw error;
+    }
+  },
+  
+  deleteTweet: async (tweetId) => {
+    set({ isLoading: true, error: null });
+    try {
+      await tweetService.deleteTweet(tweetId);
+      
+      set(state => ({
+        tweets: state.tweets.filter(tweet => tweet._id !== tweetId),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Erreur de suppression du tweet:', error);
+      set({ 
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Erreur de suppression du tweet'
+      });
+      throw error;
+    }
+  },
+  
+  saveTweet: async (tweetId) => {
+    try {
+      const result = await tweetService.toggleSaveTweet(tweetId);
+      
+      // Mettre à jour l'état du tweet sauvegardé
+      set(state => ({
+        tweets: state.tweets.map(tweet => 
+          tweet._id === tweetId 
+            ? { ...tweet, isSavedByUser: result.isSaved }
+            : tweet
+        )
+      }));
+    } catch (error) {
+      console.error('Erreur de sauvegarde du tweet:', error);
+    set({ 
+        error: error instanceof Error ? error.message : 'Erreur de sauvegarde du tweet'
+      });
+    }
+  },
+  
+  fetchLikedTweets: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const likedTweets = await tweetService.getUserLikedTweets();
+      set({ tweets: likedTweets, isLoading: false });
+    } catch (error) {
+      console.error('Erreur de récupération des tweets likés:', error);
+      set({ 
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Erreur de récupération des tweets likés'
+      });
+    }
+  },
+  
+  fetchRetweetedTweets: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const retweetedTweets = await tweetService.getUserRetweetedTweets();
+      set({ tweets: retweetedTweets, isLoading: false });
+    } catch (error) {
+      console.error('Erreur de récupération des retweets:', error);
+    set({ 
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Erreur de récupération des retweets'
+      });
+    }
+  },
+  
+  fetchCommentedTweets: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const commentedTweets = await tweetService.getUserCommentedTweets();
+      set({ tweets: commentedTweets, isLoading: false });
+    } catch (error) {
+      console.error('Erreur de récupération des tweets commentés:', error);
+      set({ 
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Erreur de récupération des tweets commentés'
+      });
+    }
+  },
+  
+  fetchSavedTweets: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const savedTweets = await tweetService.getSavedTweets();
+      set({ tweets: savedTweets, isLoading: false });
+    } catch (error) {
+      console.error('Erreur de récupération des tweets sauvegardés:', error);
+      set({ 
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Erreur de récupération des tweets sauvegardés'
       });
     }
   }
