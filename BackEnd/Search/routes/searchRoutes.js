@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const searchController = require('../controllers/searchController');
-const authMiddleware = require('../../users/middleware/authMiddleware');
+const authMiddleware = require('../middleware/authMiddleware');
 const mongoose = require('mongoose');
 
 // Route publique pour vérifier l'état du service et de la base de données

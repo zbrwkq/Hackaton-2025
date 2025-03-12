@@ -19,8 +19,8 @@ mongoose.connect("mongodb://127.0.0.1:27017/HackatonTwitter", {
     console.log("✅ Service Search connecté à MongoDB");
     
     // Charger les schémas et modèles
-    const tweetSchema = require('../Tweets/models/tweetModel').schema;
-    const userSchema = require('../users/models/User').schema;
+    const tweetSchema = require('./models/tweetModel').schema;
+    const userSchema = require('./models/User').schema;
     
     // Créer les modèles localement
     mongoose.model('Tweet', tweetSchema);

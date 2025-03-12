@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const tweetController = require('../controllers/tweetController');
-const authMiddleware = require('../../users/middleware/authMiddleware');
+const authMiddleware = require('../middleware/authMiddleware');
 
 // Routes publiques
 router.get('/', authMiddleware, tweetController.getAllTweets);
