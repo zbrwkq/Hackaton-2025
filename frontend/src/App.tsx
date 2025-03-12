@@ -11,6 +11,7 @@ import { Profile } from './pages/Profile';
 import { Notifications } from './pages/Notifications';
 import { SearchPage } from './pages/Search';
 import { useStore } from './store/useStore';
+import { AuthProvider } from './components/AuthProvider';
 
 const MOCK_TWEETS = [
   {
@@ -255,20 +256,22 @@ function App() {
 
   return (
     <BrowserRouter>
-      <AnimatePresence mode="wait">
-        <Routes>
-          <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" />} />
-          <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/" />} />
-          <Route path="/" element={isAuthenticated ? <MainLayout /> : <Navigate to="/login" />}>
-            <Route index element={<Feed />} />
-            <Route path="messages" element={<Messages />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="notifications" element={<Notifications />} />
-            <Route path="search" element={<SearchPage />} />
-          </Route>
-        </Routes>
-      </AnimatePresence>
+      <AuthProvider>
+        <AnimatePresence mode="wait">
+          <Routes>
+            <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" />} />
+            <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/" />} />
+            <Route path="/" element={isAuthenticated ? <MainLayout /> : <Navigate to="/login" />}>
+              <Route index element={<Feed />} />
+              <Route path="messages" element={<Messages />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="notifications" element={<Notifications />} />
+              <Route path="search" element={<SearchPage />} />
+            </Route>
+          </Routes>
+        </AnimatePresence>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
