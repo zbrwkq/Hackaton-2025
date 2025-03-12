@@ -1,0 +1,170 @@
+services:
+  # Service Traefik
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Dashboard Traefik (optionnel, à sécuriser en production)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/config:/etc/traefik
+    command:
+      - "--api.insecure=true"  # Dashboard accessible sans authentification (à désactiver en production)
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+    networks:
+      - web-ntw
+      - database-ntw
+
+  # Service Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`hackaton.local`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+    networks:
+      - web-ntw
+
+  # Service MongoDB
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
+    environment:
+      - MONGO_INITDB_DATABASE=HackatonTwitter
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - database-ntw
+
+  # Service Database (backend)
+  database-service:
+    build:
+      context: ./BackEnd/Database
+      dockerfile: Dockerfile
+    container_name: database-service
+    restart: always
+    depends_on:
+      - mongodb
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/HackatonTwitter
+    volumes:
+      - ./BackEnd/Database:/app
+      - /app/node_modules
+    networks:
+      - database-ntw
+      
+  # Service Search (backend)
+  search-service:
+    build:
+      context: ./BackEnd/Search
+      dockerfile: Dockerfile
+    container_name: search-service
+    restart: always
+    depends_on:
+      - mongodb
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.search.rule=Host(`hackaton.local`) && PathPrefix(`/api/search`)"
+      - "traefik.http.routers.search.entrypoints=web"
+      - "traefik.http.services.search.loadbalancer.server.port=6000"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/HackatonTwitter
+      - SEARCH_SERVICE_PORT=6000
+    volumes:
+      - ./BackEnd/Search:/app
+      - /app/node_modules
+    networks:
+      - database-ntw
+      - web-ntw
+      
+  # Service Tweets (backend)
+  tweets-service:
+    build:
+      context: ./BackEnd/Tweets
+      dockerfile: Dockerfile
+    container_name: tweets-service
+    restart: always
+    depends_on:
+      - mongodb
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tweets.rule=Host(`hackaton.local`) && PathPrefix(`/api/tweets`)"
+      - "traefik.http.routers.tweets.entrypoints=web"
+      - "traefik.http.services.tweets.loadbalancer.server.port=5002"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/HackatonTwitter
+      - TWEET_SERVICE_PORT=5002
+    volumes:
+      - ./BackEnd/Tweets:/app
+      - /app/node_modules
+    networks:
+      - database-ntw
+      - web-ntw
+      
+  # Service Users (backend)
+  users-service:
+    build:
+      context: ./BackEnd/users
+      dockerfile: Dockerfile
+    container_name: users-service
+    restart: always
+    depends_on:
+      - mongodb
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.users.rule=Host(`hackaton.local`) && PathPrefix(`/api/users`)"
+      - "traefik.http.routers.users.entrypoints=web"
+      - "traefik.http.services.users.loadbalancer.server.port=5000"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/HackatonTwitter
+      - PORT=5000
+    volumes:
+      - ./BackEnd/users:/app
+      - /app/node_modules
+    networks:
+      - database-ntw
+      - web-ntw
+      
+  # Service IA (backend)
+  backend-ia-service:
+    build:
+      context: ./backend-IA
+      dockerfile: Dockerfile
+    container_name: backend-ia-service
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ia.rule=Host(`hackaton.local`) && PathPrefix(`/upload`)"
+      - "traefik.http.routers.ia.entrypoints=web"
+      - "traefik.http.services.ia.loadbalancer.server.port=5001"
+    environment:
+      - PORT=5001
+    volumes:
+      - ./backend-IA:/app
+      - ./backend-IA/uploads:/app/uploads
+    networks:
+      - database-ntw
+      - web-ntw
+
+networks:
+  database-ntw:
+    driver: bridge
+  web-ntw:
+    driver: bridge
+
+volumes:
+  mongodb_data:

@@ -1,0 +1,18 @@
+api:
+  dashboard: true
+  insecure: true  # À désactiver en production
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+# Configuration globale pour les logs
+log:
+  level: INFO 
