@@ -13,7 +13,8 @@ app.use((req, res, next) => {
 // Définition des services avec les bons chemins
 const serviceMap = {
   users: "http://localhost:4000/users",  // 🔥 Correction : ajout de `/api/users`
-  tweets: "http://localhost:5002/tweets" // 🔥 Correction : ajout de `/api/tweets`
+  tweets: "http://localhost:5002/tweets", // 🔥 Correction : ajout de `/api/tweets`
+  search: "http://localhost:6000/search", // 🔥 Correction : ajout de `/api/search`
 };
 
   
