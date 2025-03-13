@@ -1,0 +1,157 @@
+services:
+  # Service API Gateway
+  api-gateway:
+    build:
+      context: ./BackEnd/api-getway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: always
+    ports:
+      - "3000:3000"  # Exposé directement sur le port 3000
+    environment:
+      - PORT=3000
+    volumes:
+      - ./BackEnd/api-getway:/app
+      - /app/node_modules
+    networks:
+      - api-ntw     # Pour communiquer avec les services backend
+    depends_on:
+      - users-service
+      - tweets-service
+      - search-service
+      - notification-service
+      - backend-ia-service
+
+  # Service Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: always
+    ports:
+      - "80:80"    # Exposé directement sur le port 80
+    networks:
+      - api-ntw    # Pour communiquer avec l'API Gateway et les services
+    depends_on:
+      - api-gateway
+      - notification-service
+
+  # Service MongoDB
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
+    environment:
+      - MONGO_INITDB_DATABASE=HackatonTwitter
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - db-ntw     # Uniquement pour être accessible par les services qui ont besoin de la base de données
+      
+  # Service Search (backend)
+  search-service:
+    build:
+      context: ./BackEnd/Search
+      dockerfile: Dockerfile
+    container_name: search-service
+    restart: always
+    depends_on:
+      - mongodb
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/HackatonTwitter
+      - SEARCH_SERVICE_PORT=6000
+    volumes:
+      - ./BackEnd/Search:/app
+      - /app/node_modules
+    networks:
+      - db-ntw     # Pour accéder à MongoDB
+      - api-ntw    # Pour être accessible par l'API Gateway
+      
+  # Service Tweets (backend)
+  tweets-service:
+    build:
+      context: ./BackEnd/Tweets
+      dockerfile: Dockerfile
+    container_name: tweets-service
+    restart: always
+    depends_on:
+      - mongodb
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/HackatonTwitter
+      - TWEET_SERVICE_PORT=5002
+    volumes:
+      - ./BackEnd/Tweets:/app
+      - /app/node_modules
+    networks:
+      - db-ntw     # Pour accéder à MongoDB
+      - api-ntw    # Pour être accessible par l'API Gateway
+      
+  # Service Users (backend)
+  users-service:
+    build:
+      context: ./BackEnd/users
+      dockerfile: Dockerfile
+    container_name: users-service
+    restart: always
+    depends_on:
+      - mongodb
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/HackatonTwitter
+      - PORT=5000
+    volumes:
+      - ./BackEnd/users:/app
+      - /app/node_modules
+    networks:
+      - db-ntw     # Pour accéder à MongoDB
+      - api-ntw    # Pour être accessible par l'API Gateway
+      
+  # Service IA (backend)
+  backend-ia-service:
+    build:
+      context: ./backend-IA
+      dockerfile: Dockerfile
+    container_name: backend-ia-service
+    restart: always
+    environment:
+      - PORT=5001
+    volumes:
+      - ./backend-IA:/app
+      - ./backend-IA/uploads:/app/uploads
+    networks:
+      - api-ntw    # Uniquement pour être accessible par l'API Gateway
+      
+  # Service Notification (backend)
+  notification-service:
+    build:
+      context: ./BackEnd/Notification
+      dockerfile: Dockerfile
+    container_name: notification-service
+    restart: always
+    depends_on:
+      - mongodb
+    ports:
+      - "5003:5003"  # Exposé directement pour les WebSockets
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/HackatonTwitter
+      - NOTIFICATION_SERVICE_PORT=5003
+    volumes:
+      - ./BackEnd/Notification:/app
+      - /app/node_modules
+    networks:
+      - db-ntw     # Pour accéder à MongoDB
+      - api-ntw    # Pour être accessible par l'API Gateway
+
+networks:
+  # Réseau pour les communications entre l'API Gateway et les services backend
+  api-ntw:
+    driver: bridge
+  
+  # Réseau pour les communications avec la base de données MongoDB
+  db-ntw:
+    driver: bridge
+
+volumes:
+  mongodb_data:

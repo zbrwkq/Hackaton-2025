@@ -1,5 +1,8 @@
+import unicodedata
+import emoji
 from flask import Flask, request, jsonify
 import os
+import joblib
 from werkzeug.utils import secure_filename
 
 from config import config
@@ -8,18 +11,67 @@ import cv2
 import numpy as np
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
+from transformers import BertTokenizer, BertModel
+import torch
+import re
 
 app = Flask(__name__)
 app.config.from_object(config)
+
+class_names = ['Angry', 'Disgusted', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
+emo_model = load_model('models/face_model.h5')
+kmeans_model = joblib.load('models/kmeans_model.pkl')
+bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+bert_model = BertModel.from_pretrained('bert-base-uncased')
 
 # Vérifie si l'extension du fichier est autorisée
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in config.ALLOWED_EXTENSIONS
 
+def clean_tweet(tweet):
+    # 1. Convertir en minuscules
+    tweet = tweet.lower()
+    
+    # 2. Supprimer les URLs
+    tweet = re.sub(r'https?://\S+|www\.\S+', '', tweet)
+    
+    # 3. Supprimer les caractères spéciaux sauf ceux utiles (ex. !, ?, #, @)
+    tweet = re.sub(r"[^a-zA-Z0-9@#?!'\s]", '', tweet)
+    
+    # 4. Réduire les lettres répétées
+    tweet = re.sub(r'(.)\1{2,}', r'\1\1', tweet)  # Remplace toute répétition de 3+ par 2 lettres
+    
+    # 5. Supprimer les espaces multiples
+    tweet = re.sub(r'\s+', ' ', tweet).strip()
+    
+    # 6. Convertir les emojis en texte lisible (ex. 😂 -> ":joy:")
+    tweet = emoji.demojize(tweet, delimiters=(" ", " "))  # Garde les emojis sous forme de texte
+    
+    # 7. Normaliser les caractères (ex. caractères accentués → version simple)
+    tweet = unicodedata.normalize("NFKC", tweet)
+    
+    return tweet
 
-# Endpoint pour l'upload de fichier MP4
-@app.route('/upload', methods=['POST'])
-def upload_file():
+# Route de vérification de santé
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({
+        'status': 'AI Service is running',
+        'models': {
+            'emotion_detection': 'loaded' if emo_model else 'not loaded',
+            'clustering': 'loaded' if kmeans_model else 'not loaded',
+            'bert': 'loaded' if bert_model else 'not loaded'
+        },
+        'endpoints': [
+            '/health',
+            '/emotions',
+            '/cluster',
+            '/clusters'
+        ]
+    }), 200
+
+@app.route('/emotions', methods=['POST'])
+def get_emotions():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
     
@@ -33,9 +85,6 @@ def upload_file():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
-        model_best = load_model('models/face_model.h5') 
-
-        class_names = ['Angry', 'Disgusted', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
 
         face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
@@ -65,13 +114,11 @@ def upload_file():
                 face_image = np.vstack([face_image])
 
                 # Predict emotion using the loaded model
-                predictions = model_best.predict(face_image)
+                predictions = emo_model.predict(face_image)
                 emotion_label = class_names[np.argmax(predictions)]
                 emotion_hist.append(emotion_label)
 
-
-
-        # Release the webcam and close the window
+        # Release capture
         cap.release()
         
         emotion_counter = {}
@@ -87,13 +134,74 @@ def upload_file():
         for cle, val in emotion_counter.items():
             pourcentages[cle] = (val / total) * 100
 
-        # Affichage des résultats
+        # envoie des résultats
         pourcentages = sorted(pourcentages.items(), key=lambda x: x[1], reverse=True)
         os.remove(filepath)
         return jsonify(pourcentages), 200
     
     return jsonify({'error': 'Invalid file format'}), 400
 
+
+@app.route('/cluster', methods=['POST'])
+def get_cluster():
+    try:
+        # Récupérer le texte depuis la requête JSON
+        data = request.get_json()
+        tweet = data.get("tweet", "")
+
+        if not tweet:
+            return jsonify({"error": "No tweet provided"}), 400
+
+        tweet_cleaned = clean_tweet(tweet)
+
+
+        inputs = bert_tokenizer(tweet_cleaned, return_tensors='pt', truncation=True, padding=True, max_length=128)
+        
+        # Passer les tokens dans le modèle BERT pour obtenir les embeddings
+        with torch.no_grad():
+            outputs = bert_model(**inputs)
+
+        embeddings = [outputs.last_hidden_state.mean(dim=1).squeeze().numpy()]
+
+
+        cluster = kmeans_model.predict(embeddings)[0]
+        return jsonify({"tweet": tweet, "cluster": int(cluster)}), 200
+
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/clusters', methods=['POST'])
+def get_clusters():
+    try:
+        datas = request.get_json()
+
+        if not datas:
+            return jsonify({"error": "No tweet provided"}), 400
+
+        cleaned_tweets = np.array([clean_tweet(data["tweet"]) for data in datas])
+        
+        embeddings = []
+
+        for idx, tweet in enumerate(cleaned_tweets, start=1):  
+            inputs = bert_tokenizer(tweet, return_tensors='pt', truncation=True, padding=True, max_length=128)
+            with torch.no_grad():
+                outputs = bert_model(**inputs)
+
+            embeddings.append(outputs.last_hidden_state.mean(dim=1).squeeze().numpy())
+            
+        
+
+
+        clusters = kmeans_model.predict(embeddings)
+
+        return jsonify([{"tweet": datas[idx]["tweet"], "cluster": int(cluster)} for idx, cluster in enumerate(clusters)]), 200
+
+
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+        
 if __name__ == '__main__':
     os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
     app.run(debug=config.DEBUG, port=config.PORT)

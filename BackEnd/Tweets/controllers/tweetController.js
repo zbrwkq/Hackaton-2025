@@ -5,7 +5,7 @@ const User = require('../models/User'); // Import direct du modèle User
 // Créer un nouveau tweet
 exports.createTweet = async (req, res) => {
     try {
-        const { content, media, hashtags, mentions } = req.body;
+        const { content, media, hashtags, mentions, category } = req.body;
         
         // Vérification des mentions
         if (mentions && mentions.length > 0) {
@@ -21,7 +21,8 @@ exports.createTweet = async (req, res) => {
             content,
             media: media || [],
             hashtags: hashtags || [],
-            mentions: mentions || []
+            mentions: mentions || [],
+            category: category || null // Gestion de la catégorie
         });
 
         await tweet.save();
@@ -48,7 +49,15 @@ exports.createTweet = async (req, res) => {
 // Obtenir tous les tweets
 exports.getAllTweets = async (req, res) => {
     try {
-        const tweets = await Tweet.find()
+        const { category } = req.query; // Ajout du filtre par catégorie
+
+        // Construire le filtre
+        const filter = {};
+        if (category) {
+            filter.category = category;
+        }
+
+        const tweets = await Tweet.find(filter)
             .populate('userId', 'username profilePicture')
             .populate('mentions', 'username profilePicture')
             .populate('likes', 'username profilePicture')
@@ -261,71 +270,6 @@ exports.searchByHashtag = async (req, res) => {
         res.json(tweets);
     } catch (error) {
         res.status(500).json({ message: error.message });
-    }
-};
-
-exports.createRetweet = async (req, res) => {
-    try {
-        const { tweetId, content } = req.body;
-        const userId = req.user.userId;
-
-        // Vérifier si le tweet original existe
-        const originalTweet = await Tweet.findById(tweetId);
-        if (!originalTweet) {
-            return res.status(404).json({ message: "Tweet original non trouvé" });
-        }
-
-        // Vérifier si l'utilisateur a déjà retweeté
-        const existingRetweet = await Tweet.findOne({
-            'userId': userId,
-            'retweetData.originalTweet': tweetId,
-            'retweetData.isRetweet': true
-        });
-
-        if (existingRetweet) {
-            return res.status(400).json({ message: "Vous avez déjà retweeté ce tweet" });
-        }
-
-        // Créer le retweet
-        const retweet = new Tweet({
-            userId: userId,
-            content: content || originalTweet.content, // Utilise le contenu original si pas de nouveau contenu
-            retweetData: {
-                isRetweet: true,
-                originalTweet: tweetId
-            }
-        });
-
-        await retweet.save();
-
-        // Mettre à jour le tweet original
-        await Tweet.findByIdAndUpdate(tweetId, {
-            $addToSet: { 'retweetData.retweetedBy': userId }
-        });
-
-        // Récupérer le retweet avec toutes les informations
-        const populatedRetweet = await Tweet.findById(retweet._id)
-            .populate('userId', 'username profilePicture')
-            .populate({
-                path: 'retweetData.originalTweet',
-                populate: {
-                    path: 'userId',
-                    select: 'username profilePicture'
-                }
-            })
-            .exec();
-
-        res.status(201).json({
-            message: "Retweet créé avec succès",
-            tweet: populatedRetweet
-        });
-
-    } catch (error) {
-        console.error("Erreur création retweet:", error);
-        res.status(400).json({ 
-            message: "Erreur lors de la création du retweet",
-            error: error.message 
-        });
     }
 };
 

@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
+const path = require("path");
 
 // Charger les variables d'environnement
 dotenv.config();
@@ -12,8 +13,11 @@ const app = express();
 app.use(express.json());
 app.use(cors({ origin: "*" }));
 
+// Servir les fichiers statiques du dossier uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Connexion MongoDB simple et directe
-mongoose.connect("mongodb://127.0.0.1:27017/HackatonTwitter", {
+mongoose.connect("mongodb://mongodb:27017/HackatonTwitter", {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 })

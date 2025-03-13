@@ -3,6 +3,7 @@ const Tweet = require("../models/tweetModel"); // Importation du modèle Tweet
 const User = require("../models/User"); // Importation du modèle User
 const { sendNotification } = require("../socketManager");
 
+
 // Créer une notification et envoyer au propriétaire du tweet
 const getNotifications = async (req, res) => {
     try {

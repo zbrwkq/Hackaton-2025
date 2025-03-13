@@ -16,7 +16,7 @@ initSocket(server); // ✅ On passe `server` à WebSocket
 
 // Connexion MongoDB
 mongoose
-  .connect("mongodb://127.0.0.1:27017/HackatonTwitter")
+  .connect("mongodb://mongodb:27017/HackatonTwitter")
   .then(() => console.log("✅ Service Notifications connecté à MongoDB"))
   .catch((err) => console.error("❌ Erreur de connexion MongoDB:", err));
 
@@ -27,6 +27,14 @@ app.use(cors({ origin: "*" }));
 // ✅ Importer les routes APRÈS l'initialisation
 const notificationRoutes = require("./routes/notificationRoutes");
 app.use("/notifications", notificationRoutes);
+
+// Route de vérification de santé
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'Notification Service is running',
+    message: 'Utilisez /notifications pour accéder aux notifications'
+  });
+});
 
 
 // Démarrer le serveur HTTP + WebSocket

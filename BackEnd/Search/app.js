@@ -10,7 +10,8 @@ app.use(express.json());
 app.use(cors());
 
 // Connexion MongoDB
-mongoose.connect("mongodb://127.0.0.1:27017/HackatonTwitter", {
+
+mongoose.connect("mongodb://mongodb:27017/HackatonTwitter", {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     serverSelectionTimeoutMS: 30000,
