@@ -262,4 +262,19 @@ export const getSavedTweets = async (): Promise<Tweet[]> => {
 
   const data = await response.json();
   return data.tweets;
+};
+
+// Liker un tweet
+export const likeTweet = async (tweetId: string): Promise<Tweet> => {
+  return toggleLike(tweetId);
+};
+
+// Retweeter un tweet
+export const retweetTweet = async (tweetId: string, content?: string): Promise<Tweet> => {
+  return toggleRetweet(tweetId, content);
+};
+
+// Commenter un tweet
+export const commentTweet = async (tweetId: string, content: string): Promise<Tweet> => {
+  return addComment(tweetId, content);
 }; 

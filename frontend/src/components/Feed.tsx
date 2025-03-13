@@ -17,6 +17,7 @@ import { MediaViewer } from './MediaViewer';
 import { CameraPermissionButton } from './CameraPermissionButton';
 import { RecordingErrorMessage } from './RecordingErrorMessage';
 import { Tweet } from '../types';
+import * as notificationService from '../services/notificationService';
 
 // URL de base de l'APIs  
 const API_URL = '/api/tweets/tweets';
@@ -285,9 +286,25 @@ export function Feed() {
         );
       });
       
-      console.log('Like/Unlike réussi:', updatedTweet);
+      console.log('DEBUG Feed: Like/Unlike réussi:', updatedTweet);
+      // Envoyer une notification (utilisateur actuel qui like le tweet d'un autre utilisateur)
+      const { currentUser } = useStore.getState();
+      console.log('DEBUG Feed: currentUser:', currentUser, 'updatedTweet.userId:', updatedTweet.userId);
+      if (currentUser && updatedTweet.userId !== currentUser._id) {
+        try {
+          console.log('DEBUG Feed: Notification de like a envoyer:', currentUser._id, updatedTweet.userId);
+          const notification = await notificationService.createNotification({
+            type: 'like',
+            relatedUserId: currentUser._id,
+            tweetId
+          });
+          console.log('DEBUG Feed: Notification de like envoyée:', notification);
+        } catch (error) {
+          console.error('DEBUG Feed: Erreur lors de l\'envoi de la notification de like:', error);
+        }
+      }
     } catch (error) {
-      console.error('Erreur lors du like/unlike:', error);
+      console.error('DEBUG Feed: Erreur lors du like/unlike:', error);
     }
   };
 
@@ -315,6 +332,25 @@ export function Feed() {
       
       // Rafraîchir tous les tweets pour récupérer les données à jour
       await fetchTweets();
+      
+      // Envoyer une notification de retweet
+      const { currentUser } = useStore.getState();
+      const targetTweet = tweetData.find(t => t._id === tweetId);
+      
+      // Vérifier que l'utilisateur actuel n'est pas le propriétaire du tweet
+      if (currentUser && targetTweet && targetTweet.userId !== currentUser._id) {
+        try {
+          console.log('DEBUG Feed: Notification de retweet à envoyer:', currentUser._id, targetTweet.userId);
+          const notification = await notificationService.createNotification({
+            type: 'retweet',
+            relatedUserId: currentUser._id,
+            tweetId
+          });
+          console.log('DEBUG Feed: Notification de retweet envoyée:', notification);
+        } catch (error) {
+          console.error('DEBUG Feed: Erreur lors de l\'envoi de la notification de retweet:', error);
+        }
+      }
       
     } catch (error) {
       console.error('Erreur lors du retweet:', error);
@@ -418,6 +454,25 @@ export function Feed() {
           tweet._id === tweetId ? data.tweet : tweet
         );
       });
+      
+      // Envoyer une notification de commentaire
+      const { currentUser } = useStore.getState();
+      const targetTweet = tweetData.find(t => t._id === tweetId);
+      
+      // Vérifier que l'utilisateur actuel n'est pas le propriétaire du tweet
+      if (currentUser && targetTweet && targetTweet.userId !== currentUser._id) {
+        try {
+          console.log('DEBUG Feed: Notification de commentaire à envoyer:', currentUser._id, targetTweet.userId);
+          const notification = await notificationService.createNotification({
+            type: 'reply',
+            relatedUserId: currentUser._id,
+            tweetId
+          });
+          console.log('DEBUG Feed: Notification de commentaire envoyée:', notification);
+        } catch (error) {
+          console.error('DEBUG Feed: Erreur lors de l\'envoi de la notification de commentaire:', error);
+        }
+      }
       
     } catch (error) {
       console.error('Erreur lors du commentaire:', error);
