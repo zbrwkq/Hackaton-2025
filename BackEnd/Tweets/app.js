@@ -21,7 +21,7 @@ mongoose.connect("mongodb://127.0.0.1:27017/HackatonTwitter", {
 .catch(err => console.error("❌ Erreur de connexion:", err));
 
 // Charger les modèles
-require('../users/models/User');
+require('./models/User');
 require('./models/tweetModel');
 
 // Route de test

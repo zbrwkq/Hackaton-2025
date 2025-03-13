@@ -1,6 +1,6 @@
-const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
-require('dotenv').config();
+const express = require("express");
+const { createProxyMiddleware } = require("http-proxy-middleware");
+require("dotenv").config();
 
 const app = express();
 
@@ -12,31 +12,30 @@ app.use((req, res, next) => {
 
 // Définition des services avec les bons chemins
 const serviceMap = {
-  users: "http://localhost:4000/users",  // 🔥 Correction : ajout de `/api/users`
-  tweets: "http://localhost:5002/tweets" // 🔥 Correction : ajout de `/api/tweets`
+  users: "http://localhost:4000/users", // 🔥 Correction : ajout de `/api/users`
+  tweets: "http://localhost:5002/tweets",
+  notifications: "http://localhost:5003/notifications",
 };
 
-  
+app.use("/:service", (req, res, next) => {
+  const serviceName = req.params.service;
+  const target = serviceMap[serviceName];
+  console.log("service", target);
 
- app.use("/:service", (req, res, next) => {
-    const serviceName = req.params.service;
-    const target = serviceMap[serviceName];
-    console.log("service",target);
-  
-    if (target) {
-      createProxyMiddleware({
-        target,
-        changeOrigin: true,
-        logLevel: "debug",
-      })(req, res, next);
-    } else {
-      res.status(502).send(`Service ${serviceName} non disponible.`);
-    }
-  }); 
-  
+  if (target) {
+    createProxyMiddleware({
+      target,
+      changeOrigin: true,
+      logLevel: "debug",
+    })(req, res, next);
+  } else {
+    res.status(502).send(`Service ${serviceName} non disponible.`);
+  }
+});
+
 // Démarrer l'API Gateway
-const PORT =  3000;
+const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API Gateway en écoute sur http://localhost:${PORT}`);
-  console.log('🔗 Services enregistrés :', Object.keys(serviceMap));
+  console.log("🔗 Services enregistrés :", Object.keys(serviceMap));
 });
