@@ -3,59 +3,7 @@ import type { Tweet, User, Notification } from '../types';
 import * as userService from '../services/userService';
 import * as authService from '../services/authService';
 import * as tweetService from '../services/tweetService';
-
-// Notifications d'exemple pour la démo
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    _id: '1',
-    userId: '1',
-    type: 'like',
-    createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
-    read: false,
-    sourceUserId: '2',
-    sourceUsername: 'Alex Rivera',
-    tweetId: '1'
-  },
-  {
-    _id: '2',
-    userId: '1',
-    type: 'retweet',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), // 3 hours ago
-    read: false,
-    sourceUserId: '3',
-    sourceUsername: 'Maria Johnson',
-    tweetId: '1'
-  },
-  {
-    _id: '3',
-    userId: '1',
-    type: 'follow',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
-    read: true,
-    sourceUserId: '4',
-    sourceUsername: 'Thomas Wright'
-  },
-  {
-    _id: '4',
-    userId: '1',
-    type: 'reply',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(), // 1.5 days ago
-    read: true,
-    sourceUserId: '5',
-    sourceUsername: 'Sophia Chen',
-    tweetId: '1'
-  },
-  {
-    _id: '5',
-    userId: '1',
-    type: 'mention',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 days ago
-    read: true,
-    sourceUserId: '6',
-    sourceUsername: 'James Wilson',
-    tweetId: '2'
-  }
-];
+import * as notificationService from '../services/notificationService';
 
 interface NotificationSettings {
   likes: boolean;
@@ -105,9 +53,10 @@ interface NotificationState {
   notificationSettings: NotificationSettings;
   setNotifications: (notifications: Notification[]) => void;
   addNotification: (notification: Notification) => void;
-  markNotificationAsRead: (notificationId: string) => void;
+  markNotificationAsRead: (notificationId: string) => Promise<void>;
   markAllNotificationsAsRead: () => void;
   updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
+  fetchNotifications: () => Promise<void>;
 }
 
 type Store = AuthState & NotificationState & TweetState;
@@ -123,7 +72,7 @@ export const useStore = create<Store>((set, get) => ({
   tweets: [],
   
   // Notification state
-  notifications: MOCK_NOTIFICATIONS,
+  notifications: [],
   notificationSettings: {
     likes: true,
     retweets: true,
@@ -307,48 +256,69 @@ export const useStore = create<Store>((set, get) => ({
   },
   
   followUser: async (userId) => {
-    const token = authService.getToken();
-    if (!token) return;
-    
-    set({ isLoading: true });
     try {
-      const result = await userService.toggleFollow(token, userId);
+      await userService.followUser(userId);
       
-      // Rafraîchir les followers et following après l'action
-      await get().loadUserProfile();
+      // Mettre à jour la liste des utilisateurs suivis
+      const updatedUser = await userService.getUserProfile();
+      set({ currentUser: updatedUser });
       
-      set({ isLoading: false });
+      // Envoyer une notification (utilisateur actuel qui suit un autre utilisateur)
+      const { currentUser } = get();
+      if (currentUser) {
+        try {
+          await notificationService.createNotification({
+            type: 'follow',
+            relatedUserId: currentUser._id
+          });
+        } catch (error) {
+          console.error('Erreur lors de l\'envoi de la notification de suivi:', error);
+        }
+      }
     } catch (error) {
-      console.error('Erreur lors du follow/unfollow:', error);
-      set({ 
-        isLoading: false, 
-        error: error instanceof Error ? error.message : 'Erreur lors du follow/unfollow'
-      });
+      console.error('Erreur lors du suivi de l\'utilisateur:', error);
     }
   },
   
   // Notification actions
   setNotifications: (notifications) => set({ notifications }),
   
-  addNotification: (notification) => set((state) => ({ 
-    notifications: [notification, ...state.notifications] 
+  addNotification: (notification) => set((state) => ({
+    notifications: [notification, ...state.notifications]
   })),
   
-  markNotificationAsRead: (notificationId) => set((state) => ({
-    notifications: state.notifications.map(notification => 
-      notification._id === notificationId 
-        ? { ...notification, read: true } 
-        : notification
-    )
-  })),
+  markNotificationAsRead: async (notificationId) => {
+    try {
+      await notificationService.markNotificationAsRead(notificationId);
+      set((state) => ({
+        notifications: state.notifications.map((notif) => 
+          notif._id === notificationId ? { ...notif, read: true } : notif
+        )
+      }));
+    } catch (error) {
+      console.error('Erreur lors du marquage de la notification comme lue:', error);
+    }
+  },
   
   markAllNotificationsAsRead: () => set((state) => ({
-    notifications: state.notifications.map(notification => ({ ...notification, read: true }))
+    notifications: state.notifications.map((notif) => ({ ...notif, read: true }))
   })),
   
   updateNotificationSettings: (settings) => set((state) => ({
     notificationSettings: { ...state.notificationSettings, ...settings }
   })),
+  
+  fetchNotifications: async () => {
+    const { currentUser } = get();
+    if (!currentUser) return;
+    
+    try {
+      const notifications = await notificationService.fetchNotifications(currentUser._id);
+      set({ notifications });
+    } catch (error) {
+      console.error('Erreur lors de la récupération des notifications:', error);
+    }
+  },
   
   // Tweet actions
   fetchTweets: async () => {
@@ -390,18 +360,36 @@ export const useStore = create<Store>((set, get) => ({
   },
   
   likeTweet: async (tweetId) => {
+    set({ isLoading: true, error: null });
     try {
-      const updatedTweet = await tweetService.toggleLike(tweetId);
+      const updatedTweet = await tweetService.likeTweet(tweetId);
       
-      set(state => ({
-        tweets: state.tweets.map(tweet => 
+      // Mettre à jour le tweet dans la liste des tweets
+      set((state) => ({
+        tweets: state.tweets.map((tweet) => 
           tweet._id === tweetId ? updatedTweet : tweet
-        )
+        ),
+        isLoading: false
       }));
+      
+      // Envoyer une notification (utilisateur actuel qui like le tweet d'un autre utilisateur)
+      const { currentUser } = get();
+      if (currentUser && updatedTweet.userId !== currentUser._id) {
+        try {
+          await notificationService.createNotification({
+            type: 'like',
+            relatedUserId: currentUser._id,
+            tweetId
+          });
+        } catch (error) {
+          console.error('Erreur lors de l\'envoi de la notification de like:', error);
+        }
+      }
     } catch (error) {
-      console.error('Erreur de like/unlike:', error);
+      console.error('Erreur de like:', error);
       set({ 
-        error: error instanceof Error ? error.message : 'Erreur de like/unlike'
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Erreur lors du like'
       });
     }
   },
@@ -409,37 +397,70 @@ export const useStore = create<Store>((set, get) => ({
   retweetTweet: async (tweetId, content) => {
     set({ isLoading: true, error: null });
     try {
-      const retweetedTweet = await tweetService.toggleRetweet(tweetId, content);
+      const updatedTweet = await tweetService.retweetTweet(tweetId, content);
       
-      // Rafraîchir tous les tweets
-      await get().fetchTweets();
+      // Mettre à jour la liste des tweets
+      set((state) => ({
+        tweets: state.tweets.map((tweet) => 
+          tweet._id === tweetId ? updatedTweet : tweet
+        ),
+        isLoading: false
+      }));
       
-      set({ isLoading: false });
+      // Envoyer une notification (utilisateur actuel qui retweete le tweet d'un autre utilisateur)
+      const { currentUser } = get();
+      if (currentUser && updatedTweet.userId !== currentUser._id) {
+        try {
+          await notificationService.createNotification({
+            type: 'retweet',
+            relatedUserId: currentUser._id,
+            tweetId
+          });
+        } catch (error) {
+          console.error('Erreur lors de l\'envoi de la notification de retweet:', error);
+        }
+      }
     } catch (error) {
       console.error('Erreur de retweet:', error);
       set({ 
         isLoading: false, 
-        error: error instanceof Error ? error.message : 'Erreur de retweet'
+        error: error instanceof Error ? error.message : 'Erreur lors du retweet'
       });
-      throw error;
     }
   },
   
   commentTweet: async (tweetId, content) => {
+    set({ isLoading: true, error: null });
     try {
-      const updatedTweet = await tweetService.addComment(tweetId, content);
+      const updatedTweet = await tweetService.commentTweet(tweetId, content);
       
-      set(state => ({
-        tweets: state.tweets.map(tweet => 
+      // Mettre à jour la liste des tweets
+      set((state) => ({
+        tweets: state.tweets.map((tweet) => 
           tweet._id === tweetId ? updatedTweet : tweet
-        )
+        ),
+        isLoading: false
       }));
+      
+      // Envoyer une notification (utilisateur actuel qui commente le tweet d'un autre utilisateur)
+      const { currentUser } = get();
+      if (currentUser && updatedTweet.userId !== currentUser._id) {
+        try {
+          await notificationService.createNotification({
+            type: 'reply',
+            relatedUserId: currentUser._id,
+            tweetId
+          });
+        } catch (error) {
+          console.error('Erreur lors de l\'envoi de la notification de commentaire:', error);
+        }
+      }
     } catch (error) {
-      console.error('Erreur d\'ajout de commentaire:', error);
+      console.error('Erreur de commentaire:', error);
       set({ 
-        error: error instanceof Error ? error.message : 'Erreur d\'ajout de commentaire'
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Erreur lors du commentaire'
       });
-      throw error;
     }
   },
   

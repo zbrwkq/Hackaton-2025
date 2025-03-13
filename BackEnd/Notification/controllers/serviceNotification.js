@@ -79,6 +79,7 @@ const markAsRead = async (req, res) => {
         sendNotification(ownerId, {
             type,
             senderUsername: sender.username,
+            senderId: relatedUserId,
             tweetId
         });
 
