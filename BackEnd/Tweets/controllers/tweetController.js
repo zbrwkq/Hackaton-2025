@@ -8,7 +8,7 @@ const { faker } = require("@faker-js/faker");
 // Créer un nouveau tweet
 exports.createTweet = async (req, res) => {
   try {
-    const { content, media, hashtags, mentions, category } = req.body;
+    const { content, media, hashtags, mentions } = req.body;
 
     // Vérification des mentions
     if (mentions && mentions.length > 0) {
@@ -20,14 +20,21 @@ exports.createTweet = async (req, res) => {
         });
       }
     }
-
+    const response = await fetch(`${process.env.IA_API_URL}cluster`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ tweet: content }),
+    });
+    cluster = await response.json();
     const tweet = new Tweet({
       userId: req.user.userId,
       content,
       media: media || [],
       hashtags: hashtags || [],
       mentions: mentions || [],
-      category: category || null, // Gestion de la catégorie
+      cluster: cluster || null,
     });
 
     await tweet.save();
@@ -571,9 +578,6 @@ exports.generateFakeData = async (req, res) => {
   try {
     const numUsers = parseInt(req.body.users) || 10;
     const numTweets = parseInt(req.body.tweets) || 20;
-
-    await User.deleteMany({});
-    await Tweet.deleteMany({});
 
     let users = [];
     for (let i = 0; i < numUsers; i++) {
