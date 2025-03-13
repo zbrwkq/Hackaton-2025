@@ -130,14 +130,11 @@ def get_emotions():
             else:
                 emotion_counter[element] = 1
 
-        # Calculer le pourcentage de présence
         total = len(emotion_hist)
         pourcentages = {}
         for cle, val in emotion_counter.items():
             pourcentages[cle] = (val / total) * 100
 
-        # envoie des résultats
-        pourcentages = sorted(pourcentages.items(), key=lambda x: x[1], reverse=True)
         os.remove(filepath)
         return jsonify(pourcentages), 200
     
@@ -167,7 +164,7 @@ def get_cluster():
 
 
         cluster = kmeans_model.predict(embeddings)[0]
-        return jsonify({"tweet": tweet, "cluster": int(cluster)}), 200
+        return jsonify({"cluster": int(cluster)}), 200
 
 
     except Exception as e:
@@ -196,12 +193,12 @@ def get_clusters():
 
 
         clusters = kmeans_model.predict(embeddings)
-
-        return jsonify([{"tweet": datas[idx]["tweet"], "cluster": int(cluster)} for idx, cluster in enumerate(clusters)]), 200
+        return jsonify([{"cluster": int(cluster)} for cluster in clusters]), 200
 
 
 
     except Exception as e:
+        print(str(e))
         return jsonify({"error": str(e)}), 500
         
 if __name__ == '__main__':

@@ -22,6 +22,7 @@ router.post(
   [authMiddleware, upload.single("file")],
   tweetController.feedback
 );
+router.post("/fake-data", authMiddleware, tweetController.generateFakeData);
 router.post("/:id/like", authMiddleware, tweetController.toggleLike);
 router.delete("/:id", authMiddleware, tweetController.deleteTweet);
 router.post("/", authMiddleware, tweetController.createTweet);

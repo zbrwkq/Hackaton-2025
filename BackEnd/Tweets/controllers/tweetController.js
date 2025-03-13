@@ -3,6 +3,7 @@ const Tweet = require("../models/tweetModel");
 const User = require("../models/User"); // Import direct du modèle User
 const FormData = require("form-data");
 const fetch = require("node-fetch");
+const { faker } = require("@faker-js/faker");
 
 // Créer un nouveau tweet
 exports.createTweet = async (req, res) => {
@@ -539,20 +540,90 @@ exports.feedback = async (req, res) => {
     if (!tweet) {
       return res.status(404).json({ message: "Tweet non trouvé" });
     }
-    console.log(tweet);
     const formData = new FormData();
     formData.append("file", req.file.buffer, req.file.originalname);
 
-    const response = await fetch(f`${process.env.IA_API_URL}emotions`, {
+    const response = await fetch(`${process.env.IA_API_URL}emotions`, {
       method: "POST",
       headers: {},
       body: formData,
     });
     emotions = await response.json();
+    if (
+      emotions.hasOwnProperty("Happy") ||
+      emotions.hasOwnProperty("Surprise")
+    ) {
+      const tweets = await Tweet.find({ cluster: tweet.cluster });
+      nextTweet = tweets[Math.floor(Math.random() * tweets.length)];
+    } else {
+      const tweets = await Tweet.find();
+      nextTweet = tweets[Math.floor(Math.random() * tweets.length)];
+    }
 
-    res.status(200).json({ success: true, data: response.data });
+    res.status(200).json({ success: true, nextTweet: nextTweet });
   } catch (error) {
     console.error(error.message);
     res.status(500).json({ error: "Erreur serveur" });
+  }
+};
+
+exports.generateFakeData = async (req, res) => {
+  try {
+    const numUsers = parseInt(req.body.users) || 10;
+    const numTweets = parseInt(req.body.tweets) || 20;
+
+    await User.deleteMany({});
+    await Tweet.deleteMany({});
+
+    let users = [];
+    for (let i = 0; i < numUsers; i++) {
+      users.push({
+        username: faker.internet.userName(),
+        mail: faker.internet.email(),
+        bio: faker.lorem.sentence(),
+        profilePicture: faker.image.dataUri(),
+        banner: faker.image.dataUri(),
+        password: faker.internet.password(),
+        followers: [],
+        following: [],
+      });
+    }
+    users = await User.insertMany(users);
+
+    let tweets = [];
+    for (let i = 0; i < numTweets; i++) {
+      const randomUser = users[Math.floor(Math.random() * users.length)];
+      tweets.push({
+        userId: randomUser._id,
+        content: faker.lorem.sentence(),
+        hashtags: [faker.lorem.word(), faker.lorem.word()],
+        likes: [],
+        retweets: [],
+        category: faker.number.int({ min: 1, max: 5 }),
+      });
+    }
+    const response = await fetch(`${process.env.IA_API_URL}clusters`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(
+        tweets.map((tweet) => {
+          return { tweet: tweet.content };
+        })
+      ),
+    });
+    clusters = await response.json();
+    await Tweet.insertMany(
+      tweets.map((tweet, index) => ({
+        ...tweet,
+        ...clusters[index],
+      }))
+    );
+
+    res.status(201).json({ message: "Données générées avec succès !" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erreur lors de la génération des données" });
   }
 };
