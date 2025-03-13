@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
-import { notificationWebSocket } from '../services/websocketService';
 
 export function NotificationDropdown() {
   const notifications = useStore((state) => state.notifications);
@@ -17,21 +16,6 @@ export function NotificationDropdown() {
   
   // Nombre de notifications non lues
   const unreadCount = notifications.filter(n => !n.read).length;
-  
-  // Effet pour mettre en évidence brièvement les nouvelles notifications
-  useEffect(() => {
-    if (notifications.length > 0) {
-      const latestNotif = notifications[0];
-      setNewNotification(latestNotif._id);
-      
-      // Réinitialiser l'effet après 3 secondes
-      const timer = setTimeout(() => {
-        setNewNotification(null);
-      }, 3000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [notifications.length]);
   
   // Gestionnaire de clic en dehors du dropdown pour le fermer
   useEffect(() => {
@@ -131,18 +115,11 @@ export function NotificationDropdown() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
         
-        {/* Badge de notification avec animation si nouvelle notification */}
+        {/* Badge de notification */}
         {unreadCount > 0 && (
-          <motion.span 
-            className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-indigo-600 rounded-full"
-            initial={{ scale: 1 }}
-            animate={{ 
-              scale: newNotification ? [1, 1.3, 1] : 1
-            }}
-            transition={{ duration: 0.3 }}
-          >
+          <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-indigo-600 rounded-full">
             {unreadCount > 99 ? '99+' : unreadCount}
-          </motion.span>
+          </span>
         )}
       </button>
 
@@ -185,11 +162,7 @@ export function NotificationDropdown() {
                   <motion.div
                     key={notification._id}
                     initial={{ opacity: 0, y: 20 }}
-                    animate={{ 
-                      opacity: 1, 
-                      y: 0,
-                      backgroundColor: notification._id === newNotification ? ['#e8f0ff', '#f8fafc'] : ''
-                    }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
                     className={`p-4 flex items-start space-x-3 hover:bg-gray-50 transition-colors cursor-pointer ${!notification.read ? 'bg-blue-50' : ''}`}
                     onClick={() => markNotificationAsRead(notification._id)}

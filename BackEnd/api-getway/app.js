@@ -1,7 +1,7 @@
-
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const cors = require('cors');
+const http = require('http');
 require('dotenv').config();
 
 const app = express();
@@ -21,11 +21,9 @@ app.use((req, res, next) => {
 // Définition des services avec les bons chemins pour Docker
 // Les URLs correspondent aux chemins réels exposés par chaque service
 const serviceMap = {
-
   users: "http://users-service:5000",         // Service Users (expose /users)
   tweets: "http://tweets-service:5002",      // Service Tweets (expose /tweets)
   search: "http://search-service:6000",  // Service Search (expose /api/search)
-  notifications: "http://notification-service:5003", // Service Notifications
   ia: "http://backend-ia-service:5001",  // Service IA pour l'upload
 };
 
@@ -57,7 +55,6 @@ app.use("/api/:service", (req, res, next) => {
       target,
       changeOrigin: true,
       logLevel: "debug",
-
       pathRewrite: {
         [`^/api/${serviceName}`]: '', // Supprime le préfixe /api et le nom du service
       }
@@ -68,9 +65,10 @@ app.use("/api/:service", (req, res, next) => {
 });
 
 // Démarrer l'API Gateway
-
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
+const server = http.createServer(app);
+
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 API Gateway en écoute sur http://localhost:${PORT}`);
   console.log("🔗 Services enregistrés :", Object.keys(serviceMap));
 });

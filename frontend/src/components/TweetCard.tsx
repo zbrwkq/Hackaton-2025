@@ -5,6 +5,7 @@ import type { Tweet, RetweetData } from '../types';
 import { useStore } from '../store/useStore';
 import { RetweetModal } from './RetweetModal';
 import * as authService from '../services/authService';
+import * as notificationService from '../services/notificationService';
 import { Link } from 'react-router-dom';
 
 interface TweetCardProps {
@@ -88,6 +89,7 @@ export function TweetCard({
   // Fonction pour liker/unliker un tweet - Appel API direct
   const handleLike = async () => {
     try {
+      console.log('DEBUG: Début du like/unlike');
       const token = authService.getToken();
       if (!token) throw new Error('Non authentifié');
 
@@ -106,9 +108,25 @@ export function TweetCard({
       const updatedTweet = await response.json();
       setTweetData(updatedTweet);
       setIsLiked(!isLiked);
-      console.log('Like/Unlike réussi:', updatedTweet);
+      console.log('DEBUG TweetCard: Like/Unlike réussi:', updatedTweet);
+      // Envoyer une notification (utilisateur actuel qui like le tweet d'un autre utilisateur)
+      const { currentUser } = useStore.getState();
+      console.log('DEBUG TweetCard: currentUser:', currentUser, 'updatedTweet.userId:', updatedTweet.userId);
+      if (currentUser && updatedTweet.userId !== currentUser._id) {
+        try {
+          console.log('DEBUG TweetCard: Notification de like a envoyer:', currentUser._id, updatedTweet.userId);
+          const notification = await notificationService.createNotification({
+            type: 'like',
+            relatedUserId: currentUser._id,
+            tweetId: updatedTweet._id
+          });
+          console.log('DEBUG TweetCard: Notification de like envoyée:', notification);
+        } catch (error) {
+          console.error('DEBUG TweetCard: Erreur lors de l\'envoi de la notification de like:', error);
+        }
+      }
     } catch (error) {
-      console.error('Erreur lors du like/unlike:', error);
+      console.error('DEBUG TweetCard: Erreur lors du like/unlike:', error);
     }
   };
 

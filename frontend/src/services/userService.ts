@@ -240,6 +240,22 @@ export const toggleFollow = async (token: string, userId: string): Promise<{ isF
   return response.json();
 };
 
+// Obtenir le profil de l'utilisateur connecté
+export const getUserProfile = async (): Promise<User> => {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('Non authentifié');
+
+  return getProfile(token);
+};
+
+// Suivre ou ne plus suivre un utilisateur
+export const followUser = async (userId: string): Promise<{ isFollowing: boolean }> => {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('Non authentifié');
+
+  return toggleFollow(token, userId);
+};
+
 // Fonction pour récupérer un utilisateur par son ID
 export const getUserById = async (token: string, userId: string): Promise<User> => {
   const response = await fetch(`${API_URL}/${userId}`, {

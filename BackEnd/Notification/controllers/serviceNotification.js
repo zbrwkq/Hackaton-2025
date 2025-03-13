@@ -65,6 +65,7 @@ const { sendNotification } = require("../socketManager");
         sendNotification(ownerId, {
             type,
             senderUsername: sender.username,
+            senderId: relatedUserId,
             tweetId
         });
 
