@@ -13,11 +13,16 @@ interface CreateTweetData {
 }
 
 // Obtenir tous les tweets
-export const getAllTweets = async (): Promise<Tweet[]> => {
+export const getAllTweets = async (userId?: string): Promise<Tweet[]> => {
   const token = authService.getToken();
   if (!token) throw new Error('Non authentifié');
 
-  const response = await fetch(`${API_URL}/`, {
+  let url = `${API_URL}/`;
+  if (userId) {
+    url = `${API_URL}/user/${userId}`;
+  }
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`
@@ -140,12 +145,17 @@ export const deleteTweet = async (tweetId: string): Promise<void> => {
   }
 };
 
-// Récupérer les tweets que l'utilisateur a liké
-export const getUserLikedTweets = async (): Promise<Tweet[]> => {
+// Obtenir les tweets aimés par l'utilisateur
+export const getUserLikedTweets = async (userId?: string): Promise<Tweet[]> => {
   const token = authService.getToken();
   if (!token) throw new Error('Non authentifié');
 
-  const response = await fetch(`${API_URL}/user/likes`, {
+  let url = `${API_URL}/liked`;
+  if (userId) {
+    url = `${API_URL}/liked/${userId}`;
+  }
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`
@@ -154,19 +164,24 @@ export const getUserLikedTweets = async (): Promise<Tweet[]> => {
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.message || 'Erreur lors de la récupération des tweets likés');
+    throw new Error(errorData.message || 'Erreur lors de la récupération des tweets aimés');
   }
 
   const data = await response.json();
   return data.tweets;
 };
 
-// Récupérer les tweets que l'utilisateur a retweeté
-export const getUserRetweetedTweets = async (): Promise<Tweet[]> => {
+// Obtenir les tweets retweetés par l'utilisateur
+export const getUserRetweetedTweets = async (userId?: string): Promise<Tweet[]> => {
   const token = authService.getToken();
   if (!token) throw new Error('Non authentifié');
 
-  const response = await fetch(`${API_URL}/user/retweets`, {
+  let url = `${API_URL}/retweeted`;
+  if (userId) {
+    url = `${API_URL}/retweeted/${userId}`;
+  }
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`
@@ -182,12 +197,17 @@ export const getUserRetweetedTweets = async (): Promise<Tweet[]> => {
   return data.tweets;
 };
 
-// Récupérer les tweets que l'utilisateur a commenté
-export const getUserCommentedTweets = async (): Promise<Tweet[]> => {
+// Obtenir les tweets commentés par l'utilisateur
+export const getUserCommentedTweets = async (userId?: string): Promise<Tweet[]> => {
   const token = authService.getToken();
   if (!token) throw new Error('Non authentifié');
 
-  const response = await fetch(`${API_URL}/user/comments`, {
+  let url = `${API_URL}/commented`;
+  if (userId) {
+    url = `${API_URL}/commented/${userId}`;
+  }
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`
@@ -196,7 +216,7 @@ export const getUserCommentedTweets = async (): Promise<Tweet[]> => {
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.message || 'Erreur lors de la récupération des tweets commentés');
+    throw new Error(errorData.message || 'Erreur lors de la récupération des commentaires');
   }
 
   const data = await response.json();

@@ -4,13 +4,11 @@
  * pour l'analyse des expressions faciales
  */
 
-const API_URL = 'http://localhost:3000/api'; // Remplacer par l'URL de votre API
+const API_URL = '/api/tweets/tweets'; // Remplacer par l'URL de votre API
 
 interface EmotionData {
   tweetId: string;
-  userId: string;
   videoBlob: Blob;
-  recordingTimestamp: number;
 }
 
 /**
@@ -70,8 +68,6 @@ export async function sendVideoForAnalysis(data: EmotionData): Promise<void> {
     // Créer un objet FormData pour envoyer le fichier
     const formData = new FormData();
     formData.append('tweetId', data.tweetId);
-    formData.append('userId', data.userId);
-    formData.append('recordingTimestamp', data.recordingTimestamp.toString());
     formData.append('video', data.videoBlob, `tweet_${data.tweetId}_${Date.now()}.webm`);
 
     // Envoyer les données au serveur avec un timeout pour éviter les blocages
@@ -79,7 +75,7 @@ export async function sendVideoForAnalysis(data: EmotionData): Promise<void> {
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 secondes timeout
     
     try {
-      const response = await fetch(`${API_URL}/emotion-analysis`, {
+      const response = await fetch(`${API_URL}/feedback`, {
         method: 'POST',
         body: formData,
         signal: controller.signal
@@ -108,33 +104,3 @@ export async function sendVideoForAnalysis(data: EmotionData): Promise<void> {
     // mais sans notifier l'utilisateur pour respecter la demande de discrétion
   }
 }
-
-/**
- * Récupère les rapports d'analyse d'émotions pour un utilisateur
- * @param userId ID de l'utilisateur
- */
-export async function getEmotionReports(userId: string): Promise<any> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes timeout
-    
-    const response = await fetch(`${API_URL}/emotion-reports/${userId}`, {
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (!response.ok) {
-      throw new Error(`Erreur lors de la récupération des rapports: ${response.statusText}`);
-    }
-    
-    return await response.json();
-  } catch (error: unknown) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      console.error('Délai d\'attente dépassé lors de la récupération des rapports');
-    } else {
-      console.error('Erreur lors de la récupération des rapports d\'émotions:', error);
-    }
-    throw error;
-  }
-} 
