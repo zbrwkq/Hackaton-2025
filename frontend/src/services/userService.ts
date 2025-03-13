@@ -254,4 +254,21 @@ export const followUser = async (userId: string): Promise<{ isFollowing: boolean
   if (!token) throw new Error('Non authentifié');
 
   return toggleFollow(token, userId);
+};
+
+// Fonction pour récupérer un utilisateur par son ID
+export const getUserById = async (token: string, userId: string): Promise<User> => {
+  const response = await fetch(`${API_URL}/${userId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Erreur lors de la récupération de l\'utilisateur');
+  }
+
+  return response.json().then(data => data.user);
 }; 

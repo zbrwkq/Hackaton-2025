@@ -17,16 +17,16 @@ interface TweetState {
   tweets: Tweet[];
   isLoading: boolean;
   error: string | null;
-  fetchTweets: () => Promise<void>;
+  fetchTweets: (userId?: string) => Promise<void>;
   createTweet: (content: string, media?: string[], hashtags?: string[], mentions?: string[]) => Promise<void>;
   likeTweet: (tweetId: string) => Promise<void>;
   retweetTweet: (tweetId: string, content?: string) => Promise<void>;
   commentTweet: (tweetId: string, content: string) => Promise<void>;
   deleteTweet: (tweetId: string) => Promise<void>;
   saveTweet: (tweetId: string) => Promise<void>;
-  fetchLikedTweets: () => Promise<void>;
-  fetchRetweetedTweets: () => Promise<void>;
-  fetchCommentedTweets: () => Promise<void>;
+  fetchLikedTweets: (userId?: string) => Promise<void>;
+  fetchRetweetedTweets: (userId?: string) => Promise<void>;
+  fetchCommentedTweets: (userId?: string) => Promise<void>;
   fetchSavedTweets: () => Promise<void>;
 }
 
@@ -46,6 +46,7 @@ interface AuthState {
   fetchFollowers: () => Promise<void>;
   fetchFollowing: () => Promise<void>;
   followUser: (userId: string) => Promise<void>;
+  getUserById: (userId: string) => Promise<User>;
 }
 
 interface NotificationState {
@@ -321,10 +322,10 @@ export const useStore = create<Store>((set, get) => ({
   },
   
   // Tweet actions
-  fetchTweets: async () => {
+  fetchTweets: async (userId) => {
     set({ isLoading: true, error: null });
     try {
-      const tweets = await tweetService.getAllTweets();
+      const tweets = await tweetService.getAllTweets(userId);
       set({ tweets, isLoading: false });
     } catch (error) {
       console.error('Erreur de récupération des tweets:', error);
@@ -503,10 +504,10 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
   
-  fetchLikedTweets: async () => {
+  fetchLikedTweets: async (userId) => {
     set({ isLoading: true, error: null });
     try {
-      const likedTweets = await tweetService.getUserLikedTweets();
+      const likedTweets = await tweetService.getUserLikedTweets(userId);
       set({ tweets: likedTweets, isLoading: false });
     } catch (error) {
       console.error('Erreur de récupération des tweets likés:', error);
@@ -517,10 +518,10 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
   
-  fetchRetweetedTweets: async () => {
+  fetchRetweetedTweets: async (userId) => {
     set({ isLoading: true, error: null });
     try {
-      const retweetedTweets = await tweetService.getUserRetweetedTweets();
+      const retweetedTweets = await tweetService.getUserRetweetedTweets(userId);
       set({ tweets: retweetedTweets, isLoading: false });
     } catch (error) {
       console.error('Erreur de récupération des retweets:', error);
@@ -531,10 +532,10 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
   
-  fetchCommentedTweets: async () => {
+  fetchCommentedTweets: async (userId) => {
     set({ isLoading: true, error: null });
     try {
-      const commentedTweets = await tweetService.getUserCommentedTweets();
+      const commentedTweets = await tweetService.getUserCommentedTweets(userId);
       set({ tweets: commentedTweets, isLoading: false });
     } catch (error) {
       console.error('Erreur de récupération des tweets commentés:', error);
@@ -556,6 +557,25 @@ export const useStore = create<Store>((set, get) => ({
         isLoading: false, 
         error: error instanceof Error ? error.message : 'Erreur de récupération des tweets sauvegardés'
       });
+    }
+  },
+  
+  getUserById: async (userId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const token = authService.getToken();
+      if (!token) throw new Error('Non authentifié');
+      
+      const user = await userService.getUserById(token, userId);
+      set({ isLoading: false });
+      return user;
+    } catch (error) {
+      console.error('Erreur de récupération de l\'utilisateur:', error);
+      set({ 
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Erreur de récupération de l\'utilisateur'
+      });
+      throw error;
     }
   }
 }));

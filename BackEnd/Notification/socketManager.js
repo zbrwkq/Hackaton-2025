@@ -5,6 +5,7 @@ let io = null;
 
 // ✅ Initialisation du WebSocket Server - Amélioré
 const initSocket = (server) => {
+  
     console.log("🔧 Initialisation du serveur WebSocket Socket.IO...");
     
     io = new Server(server, {
@@ -21,7 +22,7 @@ const initSocket = (server) => {
     });
     
     console.log("🔧 Configuration du serveur WebSocket terminée");
-
+  
     // Événement de connexion
     io.on("connection", (socket) => {
         console.log(`🔗 Nouvelle connexion WebSocket : ${socket.id}`);
@@ -83,15 +84,40 @@ const initSocket = (server) => {
     io.engine.on("connection_error", (err) => {
         console.error("❌ Erreur de connexion Socket.IO:", err);
     });
+  });
 };
 
 // ✅ Fonction pour envoyer une notification en temps réel
+/* const sendNotification = (userId, notificationData) => {
+  if (!io) {
+    console.error("❌ WebSocket non initialisé !");
+    return;
+  }
+
+  setTimeout(() => {
+    // ✅ Ajout d'un délai pour s'assurer que `onlineUsers` est bien mis à jour
+    const userKey = String(userId); // ✅ Forcer en String
+    const socketId = onlineUsers.get(userKey);
+
+    if (socketId) {
+      console.log(
+        `🚀 Envoi de la notification à ${userKey} via WebSocket (Socket ID : ${socketId}).`
+      );
+      console.log("📤 Données envoyées :", notificationData);
+      io.to(socketId).emit("notification", notificationData);
+    } else {
+      console.log(`⚠️ L'utilisateur ${userKey} n'est pas connecté.`);
+      console.log("👥 Liste actuelle des utilisateurs connectés :", [
+        ...onlineUsers.entries(),
+      ]);
+    }
+  }, 100); // ✅ Délai de 100ms pour éviter les conflits de timing.
+}; */
 const sendNotification = (userId, notificationData) => {
     if (!io) {
         console.error("❌ WebSocket non initialisé !");
         return;
     }
-
     if (!userId) {
         console.error("❌ UserID non spécifié pour l'envoi de notification!");
         return;
@@ -100,7 +126,14 @@ const sendNotification = (userId, notificationData) => {
     setTimeout(() => { // ✅ Ajout d'un délai pour s'assurer que `onlineUsers` est bien mis à jour
         const userKey = String(userId); // ✅ Forcer en String
         const socketId = onlineUsers.get(userKey);
-        
+
+        // ✅ Vérification et ajout forcé de `_id` si absent
+        if (!notificationData._id) {
+            console.error("🚨 ALERTE : La notification envoyée à WebSocket n'a pas d'_id !");
+        }
+
+        console.log(`📤 Données envoyées à ${userKey}:`, notificationData);
+
         if (socketId) {
             console.log(`🚀 Envoi de la notification à ${userKey} via WebSocket (Socket ID : ${socketId}).`);
             console.log("📤 Données envoyées :", notificationData);
@@ -113,19 +146,19 @@ const sendNotification = (userId, notificationData) => {
             }
         } else {
             console.log(`⚠️ L'utilisateur ${userKey} n'est pas connecté.`);
-            console.log("👥 Liste actuelle des utilisateurs connectés :", [...onlineUsers.entries()]);
         }
-    }, 100); // ✅ Délai de 100ms pour éviter les conflits de timing.
+    }, 100);
 };
 
-// ✅ Pour tester l'état du serveur WebSocket
-const getStatus = () => {
-    return {
-        initialized: io !== null,
-        connectedClients: io ? io.engine.clientsCount : 0,
-        onlineUsers: [...onlineUsers.entries()]
-    };
-};
+const markNotificationAsRead = (userId, notificationId) => {
+  const userKey = String(userId);
+  const socketId = onlineUsers.get(userKey);
 
-// ✅ Exporter les fonctions pour utilisation dans `server.js` et `serviceNotification.js`
-module.exports = { initSocket, sendNotification, getStatus };
+  if (socketId) {
+    console.log(
+      `📢 Notification ${notificationId} marquée comme lue pour ${userKey}`
+    );
+    io.to(socketId).emit("notificationRead", { notificationId });
+  }
+};
+module.exports = { initSocket, sendNotification, markNotificationAsRead };

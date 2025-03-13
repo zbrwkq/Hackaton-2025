@@ -26,4 +26,7 @@ router.post("/follow/:id", authMiddleware, userController.toggleFollow);
 router.get("/followers", authMiddleware, userController.getFollowers);
 router.get("/following", authMiddleware, userController.getFollowing);
 
+// Route pour récupérer le profil d'un utilisateur spécifique par son ID
+router.get("/:id", authMiddleware, userController.getUserById);
+
 module.exports = router;
