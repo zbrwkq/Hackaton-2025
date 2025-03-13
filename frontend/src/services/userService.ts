@@ -238,4 +238,21 @@ export const toggleFollow = async (token: string, userId: string): Promise<{ isF
   }
 
   return response.json();
+};
+
+// Fonction pour récupérer un utilisateur par son ID
+export const getUserById = async (token: string, userId: string): Promise<User> => {
+  const response = await fetch(`${API_URL}/${userId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Erreur lors de la récupération de l\'utilisateur');
+  }
+
+  return response.json().then(data => data.user);
 }; 

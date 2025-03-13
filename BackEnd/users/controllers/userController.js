@@ -68,6 +68,23 @@ exports.getProfile = async (req, res) => {
     }
 };
 
+// Obtenir le profil d'un utilisateur spécifique par son ID
+exports.getUserById = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const user = await User.findById(userId).select("-password -mail");
+        
+        if (!user) {
+            return res.status(404).json({ message: "Utilisateur non trouvé" });
+        }
+        
+        res.json({ user });
+    } catch (error) {
+        console.error("Erreur lors de la récupération du profil:", error);
+        res.status(500).json({ message: "Erreur serveur", error: error.message });
+    }
+};
+
 // Suivre/Ne plus suivre un utilisateur
 exports.toggleFollow = async (req, res) => {
     try {
