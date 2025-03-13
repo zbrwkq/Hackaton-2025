@@ -1,6 +1,6 @@
 # Hackaton-2025
 
-`docker compuse up`
+`docker compose up`
 <br>
 `python /backend-IA/app.py`
 
