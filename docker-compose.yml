@@ -20,7 +20,7 @@ services:
       - tweets-service
       - search-service
       - notification-service
-      - backend-ia-service
+      # - backend-ia-service
 
   # Service Frontend
   frontend:
@@ -109,19 +109,21 @@ services:
       - api-ntw    # Pour être accessible par l'API Gateway
       
   # Service IA (backend)
-  backend-ia-service:
-    build:
-      context: ./backend-IA
-      dockerfile: Dockerfile
-    container_name: backend-ia-service
-    restart: always
-    environment:
-      - PORT=5001
-    volumes:
-      - ./backend-IA:/app
-      - ./backend-IA/uploads:/app/uploads
-    networks:
-      - api-ntw    # Uniquement pour être accessible par l'API Gateway
+  # backend-ia-service:
+  #   build:
+  #     context: ./backend-IA
+  #     dockerfile: Dockerfile
+  #   container_name: backend-ia-service
+  #   restart: always
+  #   environment:
+  #     - PORT=5001
+  #   ports:
+  #     - "5001:5001"
+  #   volumes:
+  #     - ./backend-IA:/app
+  #     - ./backend-IA/uploads:/app/uploads
+  #   networks:
+  #     - api-ntw    # Uniquement pour être accessible par l'API Gateway
       
   # Service Notification (backend)
   notification-service:

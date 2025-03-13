@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify
 import os
 import joblib
 from werkzeug.utils import secure_filename
+from flask_cors import CORS
 
 from config import config
 
@@ -17,6 +18,7 @@ import re
 
 app = Flask(__name__)
 app.config.from_object(config)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 class_names = ['Angry', 'Disgusted', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
 emo_model = load_model('models/face_model.h5')
