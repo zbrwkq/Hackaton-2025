@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import io from "socket.io-client";
 
-const socket = io("http://localhost:5003"); // Connexion WebSocket au backend
+const socket = io("http://localhost:3000/notifications"); // Connexion WebSocket au backend
 
 const App = () => {
     const [userId, setUserId] = useState(""); // ID de l'utilisateur connecté (celui qui reçoit la notif)
