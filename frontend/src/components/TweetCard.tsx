@@ -15,7 +15,7 @@ interface TweetCardProps {
 }
 
 // URL de base de l'API
-const API_URL = 'http://localhost:5002/tweets';
+const API_URL = '/api/tweets/tweets';
 
 export function TweetCard({ 
   tweet, 
