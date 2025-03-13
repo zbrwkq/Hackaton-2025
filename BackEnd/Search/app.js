@@ -31,7 +31,7 @@ mongoose.connect("mongodb://mongodb:27017/HackatonTwitter", {
 
     // Routes
     const searchRoutes = require("./routes/searchRoutes");
-    app.use("/api/search", searchRoutes);
+    app.use("/search", searchRoutes);
     
     const PORT = process.env.SEARCH_SERVICE_PORT || 6000;
     app.listen(PORT, () => {

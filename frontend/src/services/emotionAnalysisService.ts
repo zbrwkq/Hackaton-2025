@@ -4,10 +4,13 @@
  * pour l'analyse des expressions faciales
  */
 
-const API_URL = "/api/tweets/tweets"; // Remplacer par l'URL de votre API
+
 import * as authService from './authService';
 import * as tweetService from './tweetService';
 import { useStore } from '../store/useStore';
+
+const API_URL = 'http://localhost:3000/api/tweets/tweets'; // Remplacer par l'URL de votre API
+
 
 interface EmotionData {
   tweetId: string;

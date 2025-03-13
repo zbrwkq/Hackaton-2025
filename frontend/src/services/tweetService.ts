@@ -2,7 +2,7 @@ import { Tweet } from '../types';
 import * as authService from './authService';
 
 // URL de base de l'API
-const API_URL = '/api/tweets/tweets';
+const API_URL = 'http://localhost:3000/api/tweets/tweets';
 
 // Interface pour les paramètres de création d'un tweet
 interface CreateTweetData {

@@ -58,6 +58,42 @@ exports.createTweet = async (req, res) => {
   }
 };
 
+// Obtenir tous les tweets d'un utilisateur spécifique
+exports.getAllTweetsFromUser = async (req, res) => {
+  try {
+    const userId = req.params.id; 
+
+    const tweets = await Tweet.find({ userId: userId })
+      .populate("userId", "username profilePicture")
+      .populate("mentions", "username profilePicture")
+      .populate("likes", "username profilePicture")
+      .populate("comments.userId", "username profilePicture")
+      .populate("savedBy", "username profilePicture") 
+      .populate({
+        path: "retweetedFrom.tweetId",
+        populate: {
+          path: "userId",
+          select: "username profilePicture",
+        },
+      })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    res.status(200).json({
+      success: true,
+      count: tweets.length, 
+      tweets: tweets,
+    });
+  } catch (error) {
+    console.error("Erreur récupération tweets:", error);
+    res.status(400).json({
+      success: false, 
+      message: "Erreur lors de la récupération des tweets",
+      error: error.message,
+    });
+  }
+};
+
 // Obtenir tous les tweets
 exports.getAllTweets = async (req, res) => {
   try {

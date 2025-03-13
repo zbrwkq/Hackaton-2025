@@ -1,6 +1,7 @@
 import { getAuthHeader } from './authService';
 
-const API_URL = '/api/search/search';
+// Mise à jour de l'URL de l'API pour utiliser l'URL complète avec le port de la gateway
+const API_URL = 'http://localhost:3000/api/search/search';
 
 export interface SearchParams {
   q?: string;                 // Terme de recherche
@@ -72,6 +73,7 @@ export const getTrends = async (period: '24h' | '7d' | '30d' = '24h', category?:
     queryParams.append('period', period);
     if (category !== undefined) queryParams.append('category', category.toString());
 
+    // Mise à jour de l'URL pour les tendances
     const url = `${API_URL}/trends?${queryParams.toString()}`;
     
     const response = await fetch(url, {

@@ -25,10 +25,7 @@ router.post(
 router.post("/fake-data", authMiddleware, tweetController.generateFakeData);
 router.post("/:id/like", authMiddleware, tweetController.toggleLike);
 router.delete("/:id", authMiddleware, tweetController.deleteTweet);
-router.post("/", authMiddleware, tweetController.createTweet);
-router.post("/:id/like", authMiddleware, tweetController.toggleLike);
 router.post("/:id/retweet", authMiddleware, tweetController.toggleRetweet);
-router.delete("/:id", authMiddleware, tweetController.deleteTweet);
 
 // Nouvelle route pour les commentaires
 router.post("/:id/comment", authMiddleware, tweetController.addComment);
@@ -39,6 +36,8 @@ router.get(
   authMiddleware,
   tweetController.getUserCommentedTweets
 );
+router.get("/user/:id", authMiddleware, tweetController.getAllTweetsFromUser);
+router.get("user/:id/")
 router.get("/user/likes", authMiddleware, tweetController.getUserLikedTweets);
 router.get(
   "/user/retweets",
