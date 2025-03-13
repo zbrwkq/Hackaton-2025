@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Tweet, Comment } from '../types';
+import { Tweet, Comment, User } from '../types';
+import { useStore } from '../store/useStore';
 
 interface CommentSectionProps {
   isOpen: boolean;
@@ -12,6 +13,8 @@ interface CommentSectionProps {
 
 export function CommentSection({ isOpen, tweet, onClose, onAddComment, currentUserId }: CommentSectionProps) {
   const [newComment, setNewComment] = useState('');
+  // Récupérer l'utilisateur courant depuis le store
+  const currentUser = useStore((state) => state.currentUser);
 
   return (
     <AnimatePresence>
@@ -62,11 +65,19 @@ export function CommentSection({ isOpen, tweet, onClose, onAddComment, currentUs
                   className="comment bg-gray-50 p-4 rounded-lg"
                 >
                   <div className="flex items-start space-x-3">
-                    <img 
-                      src={comment.user?.profilePicture || 'https://via.placeholder.com/40'} 
-                      alt={comment.user?.username || 'Utilisateur'}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
+                    {comment.user?.profilePicture ? (
+                      <img 
+                        src={comment.user.profilePicture}
+                        alt={comment.user?.username || 'Utilisateur'}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                        <span className="text-gray-500 font-bold text-sm">
+                          {comment.user?.username ? comment.user.username.charAt(0).toUpperCase() : "?"}
+                        </span>
+                      </div>
+                    )}
                     <div>
                       <div className="flex items-center">
                         <h4 className="font-medium text-gray-900">{comment.user?.username || 'Utilisateur'}</h4>
@@ -93,11 +104,25 @@ export function CommentSection({ isOpen, tweet, onClose, onAddComment, currentUs
           {/* Formulaire pour ajouter un commentaire */}
           <div className="comments-input border-t border-gray-100 pt-4">
             <div className="flex space-x-3">
-              <img
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100"
-                alt="Votre avatar"
-                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-              />
+              {currentUser ? (
+                currentUser.profilePicture ? (
+                  <img 
+                    src={currentUser.profilePicture}
+                    alt={currentUser.username}
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                    <span className="text-gray-500 font-bold text-lg">
+                      {currentUser.username.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                  <span className="text-gray-500 font-bold text-lg">U</span>
+                </div>
+              )}
               <div className="flex-1 relative">
                 <textarea
                   value={newComment}

@@ -212,11 +212,19 @@ export function Profile() {
         {/* Profile picture */}
         <div className="absolute -bottom-16 left-8 border-4 border-white rounded-full shadow-md">
           <div className="relative">
-            <img 
-              src={currentUser.profilePicture || 'https://via.placeholder.com/128'} 
-              alt={currentUser.username} 
-              className="w-32 h-32 rounded-full object-cover"
-            />
+            {currentUser.profilePicture ? (
+              <img 
+                src={currentUser.profilePicture} 
+                alt={currentUser.username} 
+                className="w-32 h-32 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center">
+                <span className="text-gray-500 font-bold text-2xl">
+                  {currentUser.username.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
             <button 
               onClick={() => profileInputRef.current?.click()}
               className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow hover:bg-gray-100 transition"
