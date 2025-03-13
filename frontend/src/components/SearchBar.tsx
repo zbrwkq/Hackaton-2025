@@ -56,7 +56,7 @@ export function SearchBar() {
         const formattedUsers = response.results.users.map((user: any) => ({
           id: user._id,
           username: user.username,
-          avatar: user.profilePicture || 'https://via.placeholder.com/100'
+          avatar: user.profilePicture
         }));
         setSuggestedUsers(formattedUsers);
       }
@@ -405,11 +405,19 @@ export function SearchBar() {
                             className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
                             onClick={() => navigate(`/profile/${user.id}`)}
                           >
-                            <img 
-                              src={user.avatar} 
-                              alt={user.username} 
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
+                            {user.avatar ? (
+                              <img 
+                                src={user.avatar} 
+                                alt={user.username} 
+                                className="w-10 h-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                <span className="text-gray-500 font-bold text-sm">
+                                  {user.username.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                            )}
                             <div>
                               <p className="font-medium text-gray-900">{user.username}</p>
                               <p className="text-sm text-gray-500">@{user.username.toLowerCase().replace(' ', '')}</p>
@@ -457,7 +465,7 @@ export function SearchBar() {
                               <div key={tweet._id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/tweet/${tweet._id}`)}>
                                 <div className="flex items-start gap-3">
                                   <img 
-                                    src={tweet.userId?.profilePicture || "https://via.placeholder.com/100"} 
+                                    src={tweet.userId?.profilePicture} 
                                     alt={tweet.userId?.username || "Utilisateur"}
                                     className="w-10 h-10 rounded-full object-cover"
                                   />
@@ -505,11 +513,19 @@ export function SearchBar() {
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-3">
                                     <div className="relative">
-                                      <img 
-                                        src={user.profilePicture || "https://via.placeholder.com/100"}
-                                        alt={user.username}
-                                        className="w-12 h-12 rounded-full object-cover"
-                                      />
+                                      {user.profilePicture ? (
+                                        <img 
+                                          src={user.profilePicture}
+                                          alt={user.username}
+                                          className="w-12 h-12 rounded-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                                          <span className="text-gray-500 font-bold text-lg">
+                                            {user.username.charAt(0).toUpperCase()}
+                                          </span>
+                                        </div>
+                                      )}
                                     </div>
                                     <div>
                                       <p className="font-medium">{user.username}</p>
@@ -583,11 +599,19 @@ export function SearchBar() {
                           <div key={user._id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/profile/${user._id}`)}>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <img 
-                                  src={user.profilePicture || "https://via.placeholder.com/100"}
-                                  alt={user.username}
-                                  className="w-12 h-12 rounded-full object-cover"
-                                />
+                                {user.profilePicture ? (
+                                  <img 
+                                    src={user.profilePicture}
+                                    alt={user.username}
+                                    className="w-12 h-12 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                                    <span className="text-gray-500 font-bold text-lg">
+                                      {user.username.charAt(0).toUpperCase()}
+                                    </span>
+                                  </div>
+                                )}
                                 <div>
                                   <p className="font-medium">{user.username}</p>
                                   <p className="text-sm text-gray-500">{user.bio?.substring(0, 60) || "Aucune biographie"}</p>

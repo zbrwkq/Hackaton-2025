@@ -182,11 +182,20 @@ exports.updateProfile = async (req, res) => {
         const updates = {};
         
         // Récupérer les champs basiques à mettre à jour
-        const { username, bio } = req.body;
+        const { username, bio, profilePictureBase64, bannerBase64 } = req.body;
         if (username) updates.username = username;
         if (bio !== undefined) updates.bio = bio;
         
-        // Gestion des fichiers uploadés
+        // Traitement des images base64
+        if (profilePictureBase64) {
+            updates.profilePicture = profilePictureBase64;
+        }
+        
+        if (bannerBase64) {
+            updates.banner = bannerBase64;
+        }
+        
+        // Gestion des fichiers uploadés (méthode traditionnelle)
         if (req.files) {
             // Photo de profil
             if (req.files.profilePicture) {

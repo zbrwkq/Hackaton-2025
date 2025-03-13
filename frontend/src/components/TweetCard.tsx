@@ -31,7 +31,15 @@ export function TweetCard({
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [showRetweetModal, setShowRetweetModal] = useState(false);
   const [hasRetweeted, setHasRetweeted] = useState(false);
-  const [tweetData, setTweetData] = useState<Tweet>(tweet);
+  
+  // Normaliser les données du tweet pour s'assurer que user est correctement défini
+  const normalizedTweet = { ...tweet };
+  if (!normalizedTweet.user && typeof normalizedTweet.userId === 'object') {
+    // Si userId est un objet (populé par mongoose), l'utiliser comme user
+    normalizedTweet.user = normalizedTweet.userId;
+  }
+  
+  const [tweetData, setTweetData] = useState<Tweet>(normalizedTweet);
 
   // Vérifier si l'utilisateur a déjà liké ou retweeté ce tweet
   useEffect(() => {
@@ -51,16 +59,12 @@ export function TweetCard({
       });
       setHasRetweeted(userHasRetweeted);
     }
-    
-    // Vérifier si le tweet est sauvegardé
-    if (currentUser && tweet.isSavedByUser !== undefined) {
-      setIsBookmarked(tweet.isSavedByUser);
-    } else if (currentUser && tweet.savedBy) {
-      setIsBookmarked(tweet.savedBy.includes(currentUser._id));
+
+    // Vérifier si l'utilisateur a sauvegardé le tweet
+    if (currentUser && tweet.savedBy) {
+      setIsBookmarked(tweet.isSavedByUser || false);
     }
-    
-    setTweetData(tweet);
-  }, [tweet, currentUser]);
+  }, [currentUser, tweet]);
 
   // Fonction pour liker/unliker un tweet - Appel API direct
   const handleLike = async () => {
@@ -188,11 +192,19 @@ export function TweetCard({
       <div className="flex gap-4">
         <div className="flex-shrink-0">
           <div className="relative">
-            <img
-              src={tweetData.user?.profilePicture || 'https://via.placeholder.com/40'}
-              alt={tweetData.user?.username}
-              className="w-12 h-12 rounded-xl object-cover"
-            />
+            {(tweetData.user?.profilePicture) ? (
+              <img
+                src={tweetData.user.profilePicture}
+                alt={tweetData.user?.username || "Utilisateur"}
+                className="w-12 h-12 rounded-xl object-cover"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-xl bg-gray-200 flex items-center justify-center">
+                <span className="text-gray-500 font-bold text-lg">
+                  {tweetData.user?.username ? tweetData.user.username.charAt(0).toUpperCase() : "?"}
+                </span>
+              </div>
+            )}
             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-lg border-2 border-white" />
           </div>
         </div>

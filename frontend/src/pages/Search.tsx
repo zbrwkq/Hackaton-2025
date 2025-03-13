@@ -347,11 +347,19 @@ export function SearchPage() {
                             key={user._id}
                             className="bg-white rounded-xl shadow-sm p-4 flex items-center space-x-3 hover:shadow-md transition-shadow"
                           >
-                            <img 
-                              src={user.profilePicture || 'https://via.placeholder.com/50'} 
-                              alt={user.username}
-                              className="w-12 h-12 rounded-full object-cover" 
-                            />
+                            {user.profilePicture ? (
+                              <img 
+                                src={user.profilePicture} 
+                                alt={user.username}
+                                className="w-12 h-12 rounded-full object-cover" 
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                                <span className="text-gray-500 font-bold text-lg">
+                                  {user.username.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                            )}
                             <div>
                               <h3 className="font-medium text-gray-900">{user.username}</h3>
                               <p className="text-sm text-gray-500 line-clamp-1">{user.bio}</p>
