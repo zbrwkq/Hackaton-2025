@@ -8,7 +8,7 @@ const app = express();
 
 // Activer CORS
 app.use(cors({
-  origin: ['http://localhost', 'http://localhost:80', 'http://localhost:3000'],
+  origin: '*',
   credentials: true
 }));
 
