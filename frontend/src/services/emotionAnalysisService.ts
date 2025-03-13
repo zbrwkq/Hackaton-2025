@@ -4,7 +4,7 @@
  * pour l'analyse des expressions faciales
  */
 
-const API_URL = '/api/tweets/tweets'; // Remplacer par l'URL de votre API
+const API_URL = 'http://localhost:3000/api/tweets/tweets'; // Remplacer par l'URL de votre API
 
 interface EmotionData {
   tweetId: string;

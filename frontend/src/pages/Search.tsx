@@ -18,6 +18,7 @@ export function SearchPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [dateRange, setDateRange] = useState<{from?: string, to?: string}>({});
   const [sortBy, setSortBy] = useState<SortOption>('recent');
+  const [selectedCategory, setSelectedCategory] = useState<number | undefined>(undefined);
   const [searchResults, setSearchResults] = useState<any>({
     tweets: [],
     users: [],
@@ -32,6 +33,16 @@ export function SearchPage() {
       navigate('/login', { state: { from: '/search' } });
     }
   }, [navigate]);
+  
+  // Créer une URL complète avec le port du frontend
+  const createFrontendUrl = (path: string): string => {
+    return `http://localhost:82${path}`;
+  };
+
+  // Fonction pour gérer les clics sur les utilisateurs et tweets
+  const handleRedirect = (path: string) => {
+    window.location.href = createFrontendUrl(path);
+  };
   
   // Fonction de recherche
   const performSearch = async () => {
@@ -57,9 +68,17 @@ export function SearchPage() {
     if (dateRange.from) searchParams.startDate = dateRange.from;
     if (dateRange.to) searchParams.endDate = dateRange.to;
     
+    // Ajouter la catégorie si elle est définie
+    if (selectedCategory !== undefined) searchParams.category = selectedCategory;
+    
     try {
       const response = await search(searchParams);
-      setSearchResults(response.results);
+      if (response.success) {
+        setSearchResults(response.results);
+      } else {
+        setError('Une erreur est survenue lors de la recherche. Veuillez réessayer.');
+        setSearchResults({ tweets: [], users: [], hashtags: [] });
+      }
     } catch (err) {
       console.error('Erreur lors de la recherche:', err);
       setError('Une erreur est survenue lors de la recherche. Veuillez réessayer.');
@@ -76,12 +95,13 @@ export function SearchPage() {
     }, 500); // Ajout d'un délai pour éviter trop de requêtes
     
     return () => clearTimeout(debounceTimeout);
-  }, [searchQuery, activeTab, dateRange.from, dateRange.to, sortBy]);
+  }, [searchQuery, activeTab, dateRange.from, dateRange.to, sortBy, selectedCategory]);
   
   // Réinitialiser les filtres
   const resetFilters = () => {
     setDateRange({});
     setSortBy('recent');
+    setSelectedCategory(undefined);
   };
   
   // Formater la date pour l'affichage
@@ -334,6 +354,7 @@ export function SearchPage() {
                               tweet={tweet} 
                               hideActions={false}
                               onMediaClick={(url, alt) => {}} // Implémentez selon vos besoins
+                              onClick={() => handleRedirect(`/tweet/${tweet._id}`)}
                             />
                           </div>
                         ))}
@@ -345,7 +366,8 @@ export function SearchPage() {
                         {searchResults.users.map((user: any) => (
                           <div 
                             key={user._id}
-                            className="bg-white rounded-xl shadow-sm p-4 flex items-center space-x-3 hover:shadow-md transition-shadow"
+                            className="bg-white rounded-xl shadow-sm p-4 flex items-center space-x-3 hover:shadow-md transition-shadow cursor-pointer"
+                            onClick={() => handleRedirect(`/profile/${user._id}`)}
                           >
                             {user.profilePicture ? (
                               <img 

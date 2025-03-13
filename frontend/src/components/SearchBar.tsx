@@ -38,6 +38,9 @@ export function SearchBar() {
         // Convertir les tendances en format attendu par le composant
         const formattedTrends = response.trends.map((trend: any) => `#${trend.hashtag}`);
         setTrendingHashtags(formattedTrends.slice(0, 5)); // Limiter à 5 hashtags
+      } else {
+        // Valeurs par défaut en cas de réponse incorrecte
+        setTrendingHashtags(['#IA', '#TechNews', '#DataScience', '#MachineLearning', '#Innovation']);
       }
     } catch (error) {
       console.error('Erreur lors du chargement des hashtags tendances:', error);
@@ -50,7 +53,12 @@ export function SearchBar() {
   const loadSuggestedUsers = async () => {
     try {
       // Recherche d'utilisateurs populaires ou actifs récemment
-      const response = await search({ type: 'users', sortBy: 'popular', limit: 3 });
+      const response = await search({ 
+        type: 'users', 
+        sortBy: 'popular', 
+        limit: 3
+      });
+      
       if (response.success && response.results.users) {
         // Convertir les utilisateurs au format attendu par le composant
         const formattedUsers = response.results.users.map((user: any) => ({
@@ -59,16 +67,29 @@ export function SearchBar() {
           avatar: user.profilePicture
         }));
         setSuggestedUsers(formattedUsers);
+      } else {
+        // Utiliser des valeurs par défaut en cas de réponse incorrecte
+        setSuggestedUsers(getDefaultUsers());
       }
     } catch (error) {
       console.error('Erreur lors du chargement des utilisateurs suggérés:', error);
       // Valeurs par défaut en cas d'erreur
-      setSuggestedUsers([
-        { id: 'u1', username: 'Elena Chen', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' },
-        { id: 'u2', username: 'Alex Rivera', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100' },
-        { id: 'u3', username: 'Sophia Kim', avatar: 'https://images.unsplash.com/photo-1564046247017-4462f3c1e9a2?w=100' }
-      ]);
+      setSuggestedUsers(getDefaultUsers());
     }
+  };
+  
+  // Fonction pour générer des utilisateurs par défaut
+  const getDefaultUsers = () => {
+    return [
+      { id: 'u1', username: 'Elena Chen', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' },
+      { id: 'u2', username: 'Alex Rivera', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100' },
+      { id: 'u3', username: 'Sophia Kim', avatar: 'https://images.unsplash.com/photo-1564046247017-4462f3c1e9a2?w=100' }
+    ];
+  };
+  
+  // Créer une URL complète avec le port du frontend
+  const createFrontendUrl = (path: string): string => {
+    return `http://localhost:82${path}`;
   };
   
   // Effectuer une recherche
@@ -84,14 +105,16 @@ export function SearchBar() {
       // Convertir le type de tri
       const apiSortBy = sortBy === 'relevant' ? 'popular' : sortBy === 'popular' ? 'popular' : 'recent';
       
-      // Effectuer la recherche
+      // Effectuer la recherche avec les paramètres corrects pour le micro-service
       const response = await search({
         q: searchQuery,
         type: activeTab,
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
         sortBy: apiSortBy,
-        limit: 5 // Limiter les résultats pour l'aperçu
+        limit: 5, // Limiter les résultats pour l'aperçu
+        // Nous pourrions ajouter category ici si nécessaire dans l'interface
+        // category: selectedCategory
       });
       
       if (response.success) {
@@ -102,6 +125,8 @@ export function SearchBar() {
       }
     } catch (error) {
       console.error('Erreur lors de la recherche:', error);
+      // En cas d'erreur, afficher des résultats vides
+      setSearchResults({});
     } finally {
       setIsLoading(false);
     }
@@ -182,12 +207,47 @@ export function SearchBar() {
     return `${(count / 1000).toFixed(1)}k résultats`;
   };
   
-  // Accéder à la page de recherche complète
+  // Accéder aux résultats de recherche complets
   const goToSearchPage = () => {
     if (searchQuery.trim()) {
       saveSearchToHistory(searchQuery);
-      navigate(`/search?q=${encodeURIComponent(searchQuery)}&tab=${activeTab}&sort=${sortBy}&date=${dateFilter}`);
-      setIsExpanded(false);
+      
+      // Effectuer une recherche complète au lieu de naviguer vers une autre page
+      setIsLoading(true);
+      
+      // Récupérer les dates correspondant au filtre
+      const dateRange = getDateRangeFromPeriod(dateFilter);
+      
+      // Convertir le type de tri
+      const apiSortBy = sortBy === 'relevant' ? 'popular' : sortBy === 'popular' ? 'popular' : 'recent';
+      
+      // Effectuer la recherche directement
+      search({
+        q: searchQuery,
+        type: activeTab,
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+        sortBy: apiSortBy,
+        limit: 20, // Limite plus élevée pour les résultats complets
+      })
+      .then(response => {
+        if (response.success) {
+          // Mettre à jour les résultats de recherche dans l'état
+          setSearchResults(response.results);
+          
+          // Garder le menu de recherche ouvert pour montrer les résultats
+          // mais peut-être agrandir ou modifier l'affichage pour montrer plus de résultats
+          console.log("Recherche complète effectuée avec succès:", response.results);
+        } else {
+          console.error("Erreur lors de la recherche complète");
+        }
+      })
+      .catch(error => {
+        console.error("Erreur lors de la recherche complète:", error);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
     }
   };
   
@@ -403,7 +463,7 @@ export function SearchBar() {
                           <div 
                             key={user.id}
                             className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
-                            onClick={() => navigate(`/profile/${user.id}`)}
+                            onClick={() => window.location.href = createFrontendUrl(`/profile/${user.id}`)}
                           >
                             {user.avatar ? (
                               <img 
@@ -462,7 +522,7 @@ export function SearchBar() {
                         {searchResults.tweets && searchResults.tweets.length > 0 && (
                           <>
                             {searchResults.tweets.slice(0, 1).map((tweet: any) => (
-                              <div key={tweet._id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/tweet/${tweet._id}`)}>
+                              <div key={tweet._id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => window.location.href = createFrontendUrl(`/tweet/${tweet._id}`)}>
                                 <div className="flex items-start gap-3">
                                   <img 
                                     src={tweet.userId?.profilePicture} 
@@ -509,7 +569,7 @@ export function SearchBar() {
                         {searchResults.users && searchResults.users.length > 0 && (
                           <>
                             {searchResults.users.slice(0, 1).map((user: any) => (
-                              <div key={user._id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/profile/${user._id}`)}>
+                              <div key={user._id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => window.location.href = createFrontendUrl(`/profile/${user._id}`)}>
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-3">
                                     <div className="relative">
@@ -596,7 +656,7 @@ export function SearchBar() {
                     {activeTab === 'users' && searchResults.users && (
                       <div className="divide-y divide-gray-100">
                         {searchResults.users.slice(0, 3).map((user: any) => (
-                          <div key={user._id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/profile/${user._id}`)}>
+                          <div key={user._id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => window.location.href = createFrontendUrl(`/profile/${user._id}`)}>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 {user.profilePicture ? (

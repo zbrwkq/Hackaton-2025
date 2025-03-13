@@ -84,8 +84,7 @@ const initSocket = (server) => {
     io.engine.on("connection_error", (err) => {
         console.error("❌ Erreur de connexion Socket.IO:", err);
     });
-  });
-};
+  };
 
 // ✅ Fonction pour envoyer une notification en temps réel
 /* const sendNotification = (userId, notificationData) => {
