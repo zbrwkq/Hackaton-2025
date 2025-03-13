@@ -91,13 +91,13 @@ const initSocket = (server) => {
     socket.on("error", (error) => {
       console.error(`❌ Erreur Socket.IO (${socket.id}):`, error);
     });
-  });
-
+  };
   // Écouter les erreurs du serveur Socket.IO
   io.engine.on("connection_error", (err) => {
     console.error("❌ Erreur de connexion Socket.IO:", err);
   });
 };
+
 
 // ✅ Fonction pour envoyer une notification en temps réel
 /* const sendNotification = (userId, notificationData) => {
