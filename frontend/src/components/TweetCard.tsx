@@ -7,6 +7,7 @@ import { RetweetModal } from './RetweetModal';
 import * as authService from '../services/authService';
 import * as notificationService from '../services/notificationService';
 import { Link } from 'react-router-dom';
+import * as tweetService from '../services/tweetService';
 
 interface TweetCardProps {
   tweet: Tweet;
@@ -300,30 +301,26 @@ export function TweetCard({
       // Attendre que les données soient disponibles
       await dataAvailablePromise;
       
-      // Créer un objet FormData pour l'envoi au serveur
-      const formData = new FormData();
+      // Créer un blob vidéo à partir des chunks enregistrés
       const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
-      formData.append('video', videoBlob, 'feedback.webm');
-      formData.append('tweetId', tweet._id);
       
-      // Envoyer la vidéo au serveur
-      const token = authService.getToken();
-      if (!token) throw new Error('Non authentifié');
+      // Utiliser la fonction sendFeedback du service pour envoyer le feedback
+      const nextTweet = await tweetService.sendFeedback(tweet._id, new File([videoBlob], 'feedback.webm', { type: 'video/webm' }));
       
-      const response = await fetch(`${API_URL}/${tweet._id}/feedback`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
+      console.log('Feedback vidéo envoyé avec succès, tweet recommandé:', nextTweet);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erreur lors de l\'envoi du feedback');
+      // Ajouter le nouveau tweet à la liste des tweets dans le store
+      const { tweets } = useStore.getState();
+      
+      // Vérifier si le tweet existe déjà dans la liste
+      const tweetExists = tweets.some(t => t._id === nextTweet._id);
+      
+      if (!tweetExists) {
+        // Mettre à jour le store avec le nouveau tweet au début de la liste
+        useStore.setState({
+          tweets: [nextTweet, ...tweets]
+        });
       }
-      
-      console.log('Feedback vidéo envoyé avec succès');
       
     } catch (error) {
       console.error('Erreur lors de l\'envoi du feedback:', error);

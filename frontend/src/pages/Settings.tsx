@@ -1,13 +1,16 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { Bell, Moon, Shield, User, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
+import { Bell, Moon, Shield, User, ChevronDown, ChevronUp, LogOut, Database } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useNavigate } from 'react-router-dom';
+import { generateFakeData } from '../services/tweetService';
 
 export function Settings() {
   const navigate = useNavigate();
   const [darkMode, setDarkMode] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
+  const [isGeneratingData, setIsGeneratingData] = useState(false);
+  const [fakeDataMessage, setFakeDataMessage] = useState("");
   
   // Get notification settings from store
   const notificationSettings = useStore((state) => state.notificationSettings);
@@ -64,6 +67,24 @@ export function Settings() {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+  
+  // Générer des données fictives
+  const handleGenerateFakeData = async () => {
+    try {
+      setIsGeneratingData(true);
+      setFakeDataMessage("");
+      const result = await generateFakeData();
+      setFakeDataMessage(result.message || "Données générées avec succès");
+    } catch (error) {
+      if (error instanceof Error) {
+        setFakeDataMessage(`Erreur: ${error.message}`);
+      } else {
+        setFakeDataMessage("Une erreur est survenue");
+      }
+    } finally {
+      setIsGeneratingData(false);
+    }
   };
 
   return (
@@ -255,6 +276,42 @@ export function Settings() {
               <span className="font-medium">Confidentialité</span>
             </div>
             <button className="text-indigo-600 text-sm">Gérer</button>
+          </div>
+        </div>
+        
+        {/* Section développement (pour générer des données fictives) */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Database className="w-5 h-5 text-indigo-600" />
+              <span className="font-medium">Outils de développement</span>
+            </div>
+          </div>
+          <div className="ml-8 space-y-4">
+            <div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-medium text-gray-700">Données fictives</span>
+                  <p className="text-xs text-gray-500 mt-1">Générer des tweets, likes et commentaires fictifs pour tester l'application</p>
+                  {fakeDataMessage && (
+                    <p className={`text-xs mt-1 ${fakeDataMessage.startsWith('Erreur') ? 'text-red-500' : 'text-green-500'}`}>
+                      {fakeDataMessage}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={handleGenerateFakeData}
+                  disabled={isGeneratingData}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    isGeneratingData 
+                      ? 'bg-gray-300 cursor-not-allowed' 
+                      : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                  }`}
+                >
+                  {isGeneratingData ? 'Génération...' : 'Générer des données'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
         
