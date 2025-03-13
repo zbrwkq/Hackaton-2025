@@ -1,100 +1,100 @@
 const Notification = require("../models/Notification");
-const { sendNotification } = require("../socketManager"); // ✅ Importation depuis `socketManager.js`
-const Tweet = require("../models/tweetModel"); // Import du modèle Tweet
+const Tweet = require("../models/tweetModel"); // Importation du modèle Tweet
+const User = require("../models/User"); // Importation du modèle User
+const { sendNotification } = require("../socketManager");
 
 
-// Récupérer les notifications d'un utilisateur
-exports.getNotifications = async (req, res) => {
+// Créer une notification et envoyer au propriétaire du tweet
+const getNotifications = async (req, res) => {
     try {
         const notifications = await Notification.find({ userId: req.params.userId }).sort({ createdAt: -1 });
-
-        if (!notifications) {
-            return res.json([]); // ✅ Retourne un tableau vide au lieu de `null`
-        }
-
-        res.json(notifications);
+        res.json(notifications || []);
     } catch (error) {
         console.error("❌ Erreur lors de la récupération des notifications:", error);
         res.status(500).json({ message: error.message });
     }
 };
 
-
-// Marquer une notification comme lue
-exports.markAsRead = async (req, res) => {
+const markAsRead = async (req, res) => {
     try {
         const notification = await Notification.findByIdAndUpdate(
-            req.params.id, 
-            { isRead: true }, 
-            { new: true }
+            req.params.id, { isRead: true }, { new: true }
         );
-        if (!notification) {
-            return res.status(404).json({ message: "Notification non trouvée" });
-        }
+        if (!notification) return res.status(404).json({ message: "Notification non trouvée" });
         res.json(notification);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// Créer une notification et envoyer via WebSocket
-
-exports.createNotification = async (req, res) => {
+/* const createNotification = async (req, res) => {
     try {
-        const { userId, tweetId } = req.body; // L'utilisateur qui envoie la notif et l'ID du tweet
+        const { type, relatedUserId, tweetId } = req.body;
 
-        // 🔍 Récupérer l'auteur du tweet pour envoyer la notif
-        const tweet = await Tweet.findById(tweetId);
-        if (!tweet) {
-            return res.status(404).json({ message: "Tweet non trouvé" });
-        }
+        const tweet = await Tweet.findById(tweetId).populate("userId", "username");
+        if (!tweet) return res.status(404).json({ message: "Tweet non trouvé" });
 
-        const targetUserId = tweet.userId; // ✅ L'utilisateur qui a posté le tweet
-
-        // ✅ Vérifier si l'utilisateur n'envoie pas une notif à lui-même
-        if (targetUserId.toString() === userId.toString()) {
-            return res.status(400).json({ message: "Impossible de s'envoyer une notification !" });
-        }
-
-        // ✅ Créer la notification
-        const notification = new Notification({
-            userId: targetUserId, // Le destinataire
-            type: "mention",
-            relatedUserId: userId, // L'émetteur
-            tweetId: tweetId
-        });
-
-        await notification.save();
-
-        // ✅ Envoyer la notification en temps réel via WebSocket
-        sendNotification(targetUserId, notification);
-
-        console.log(`📨 Notification envoyée à ${targetUserId}`);
-
-        res.status(201).json(notification);
-    } catch (error) {
-        console.error("❌ Erreur lors de la création de la notification :", error);
-        res.status(500).json({ message: "Erreur lors de la création de la notification", error: error.message });
-    }
-};
-
-
-/* exports.createNotification = async (req, res) => {
-    try {
-        const { userId, type, relatedUserId, tweetId } = req.body;
+        const userId = tweet.userId._id;
+        const sender = await User.findById(relatedUserId).select("username");
 
         const notification = new Notification({ userId, type, relatedUserId, tweetId });
         await notification.save();
 
-        // ✅ Envoyer la notification en temps réel via WebSocket
-        sendNotification(userId, notification);
+        sendNotification(userId, {
+            type,
+            senderUsername: sender.username,
+            tweetId
+        });
 
-        console.log(`📨 Notification créée et envoyée en temps réel à ${userId}`);
+        console.log(`📨 Notification envoyée à ${userId}`);
+        res.status(201).json(notification);
+    } catch (error) {
+        console.error("❌ Erreur lors de la création de la notification:", error);
+        res.status(500).json({ message: "Erreur serveur", error: error.message });
+    }
+}; */
+
+// ✅ Créer une notification et l'envoyer au propriétaire du tweet
+ const createNotification = async (req, res) => {
+    try {
+        const { type, relatedUserId, tweetId } = req.body;
+
+        // 🔍 Vérifier si le tweet existe et récupérer le propriétaire du tweet
+        const tweet = await Tweet.findById(tweetId).populate("userId", "username");
+        if (!tweet) return res.status(404).json({ message: "Tweet non trouvé" });
+
+        const ownerId = tweet.userId._id; // ✅ Récupération de l'ID du propriétaire du tweet
+        const sender = await User.findById(relatedUserId).select("username"); // ✅ Récupération du username de l'envoyeur
+
+        // 🔥 Enregistrer la notification en base de données
+        const notification = new Notification({ 
+            userId: ownerId, 
+            type, 
+            relatedUserId, 
+            tweetId 
+        });
+        await notification.save();
+
+        // 🔥 Vérifier si le propriétaire du tweet est connecté
+        sendNotification(ownerId, {
+            type,
+            senderUsername: sender.username,
+            tweetId
+        });
+
+        console.log(`📨 Notification envoyée en temps réel à ${ownerId} (propriétaire du tweet)`);
 
         res.status(201).json(notification);
     } catch (error) {
         console.error("❌ Erreur lors de la création de la notification:", error);
-        res.status(500).json({ message: "Erreur lors de la création de la notification", error: error.message });
+        res.status(500).json({ message: "Erreur serveur", error: error.message });
     }
 };
- */
+
+
+// ✅ Correction de l'exportation
+module.exports = {
+    getNotifications,
+    markAsRead,
+    createNotification
+};

@@ -2,12 +2,14 @@ const mongoose = require('mongoose');
 
 exports.search = async (req, res) => {
     try {
+
         const {
             q = '',              // terme de recherche
             type = 'all',        // 'all', 'tweets', 'users', 'hashtags'
             startDate,           // format: YYYY-MM-DD
             endDate,             // format: YYYY-MM-DD
             sortBy = 'recent',   // 'recent', 'popular'
+
             limit = 10,          // nombre de résultats
             category            // nouvelle option pour filtrer par catégorie
         } = req.query; // une requete http est de la
@@ -42,6 +44,7 @@ exports.search = async (req, res) => {
                     { hashtags: { $regex: q, $options: 'i' } }
                 ]
             };
+
 
             // Modification ici pour la catégorie
             if (category !== undefined && category !== '') {
@@ -127,6 +130,7 @@ exports.search = async (req, res) => {
                 type,
                 dateRange: { startDate, endDate },
                 sortBy,
+
                 limit,
                 category: category !== undefined ? Number(category) : null // Conversion en nombre dans la réponse
             },

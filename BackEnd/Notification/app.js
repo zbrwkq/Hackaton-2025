@@ -36,8 +36,9 @@ app.get('/health', (req, res) => {
   });
 });
 
+
 // Démarrer le serveur HTTP + WebSocket
-const PORT = process.env.NOTIFICATION_SERVICE_PORT || 5003;
+const PORT =  5003;
 server.listen(PORT, () => {
   console.log(
     `🚀 Service Notifications en écoute sur http://localhost:${PORT}`
