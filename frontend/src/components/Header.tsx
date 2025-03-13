@@ -125,7 +125,7 @@ export function Header() {
                 <div className="relative">
                   <img
                     className="h-8 w-8 rounded-full object-cover border border-gray-200"
-                    src={currentUser?.profilePicture || "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100"}
+                    src={currentUser?.profilePicture}
                     alt="Avatar utilisateur"
                   />
                   <div className="absolute bottom-0 right-0 block h-2 w-2 rounded-full bg-green-400 border border-white"></div>

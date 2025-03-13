@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Tweet, Comment } from '../types';
+import { Tweet, Comment, User } from '../types';
+import { useStore } from '../store/useStore';
 
 interface CommentSectionProps {
   isOpen: boolean;
@@ -12,6 +13,27 @@ interface CommentSectionProps {
 
 export function CommentSection({ isOpen, tweet, onClose, onAddComment, currentUserId }: CommentSectionProps) {
   const [newComment, setNewComment] = useState('');
+  // Récupérer l'utilisateur courant depuis le store
+  const currentUser = useStore((state) => state.currentUser);
+
+  // Fonction pour normaliser les données utilisateur depuis un commentaire
+  const getUserFromComment = (comment: Comment) => {
+    // Si comment.user existe, l'utiliser directement
+    if (comment.user) {
+      return comment.user;
+    }
+    
+    // Si userId est un objet (populé par Mongoose), l'utiliser comme user
+    if (comment.userId && typeof comment.userId === 'object') {
+      return comment.userId;
+    }
+    
+    // Par défaut, retourner un objet minimal
+    return {
+      username: 'Utilisateur',
+      profilePicture: ''
+    };
+  };
 
   return (
     <AnimatePresence>
@@ -53,36 +75,47 @@ export function CommentSection({ isOpen, tweet, onClose, onAddComment, currentUs
           
           <div className="comments-list space-y-4 mb-4">
             {tweet.comments && tweet.comments.length > 0 ? (
-              tweet.comments.map((comment: Comment) => (
-                <motion.div
-                  key={comment._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="comment bg-gray-50 p-4 rounded-lg"
-                >
-                  <div className="flex items-start space-x-3">
-                    <img 
-                      src={comment.user?.profilePicture || 'https://via.placeholder.com/40'} 
-                      alt={comment.user?.username || 'Utilisateur'}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                    <div>
-                      <div className="flex items-center">
-                        <h4 className="font-medium text-gray-900">{comment.user?.username || 'Utilisateur'}</h4>
-                        <span className="mx-2 text-gray-400">•</span>
-                        <span className="text-sm text-gray-500">
-                          {new Date(comment.createdAt).toLocaleDateString('fr-FR', {
-                            month: 'short',
-                            day: 'numeric'
-                          })}
-                        </span>
+              tweet.comments.map((comment: Comment) => {
+                const user = getUserFromComment(comment);
+                return (
+                  <motion.div
+                    key={comment._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="comment bg-gray-50 p-4 rounded-lg"
+                  >
+                    <div className="flex items-start space-x-3">
+                      {user.profilePicture ? (
+                        <img 
+                          src={user.profilePicture}
+                          alt={user.username || 'Utilisateur'}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                          <span className="text-gray-500 font-bold text-sm">
+                            {user.username ? user.username.charAt(0).toUpperCase() : "?"}
+                          </span>
+                        </div>
+                      )}
+                      <div>
+                        <div className="flex items-center">
+                          <h4 className="font-medium text-gray-900">{user.username || 'Utilisateur'}</h4>
+                          <span className="mx-2 text-gray-400">•</span>
+                          <span className="text-sm text-gray-500">
+                            {new Date(comment.createdAt).toLocaleDateString('fr-FR', {
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-gray-700 mt-1">{comment.content}</p>
                       </div>
-                      <p className="text-gray-700 mt-1">{comment.content}</p>
                     </div>
-                  </div>
-                </motion.div>
-              ))
+                  </motion.div>
+                );
+              })
             ) : (
               <div className="text-center text-gray-500 py-8">
                 Aucun commentaire pour le moment. Soyez le premier à commenter !
@@ -93,11 +126,25 @@ export function CommentSection({ isOpen, tweet, onClose, onAddComment, currentUs
           {/* Formulaire pour ajouter un commentaire */}
           <div className="comments-input border-t border-gray-100 pt-4">
             <div className="flex space-x-3">
-              <img
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100"
-                alt="Votre avatar"
-                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-              />
+              {currentUser ? (
+                currentUser.profilePicture ? (
+                  <img 
+                    src={currentUser.profilePicture}
+                    alt={currentUser.username}
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                    <span className="text-gray-500 font-bold text-lg">
+                      {currentUser.username.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                  <span className="text-gray-500 font-bold text-lg">U</span>
+                </div>
+              )}
               <div className="flex-1 relative">
                 <textarea
                   value={newComment}

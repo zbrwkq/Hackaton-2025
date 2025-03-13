@@ -18,8 +18,8 @@ import { CameraPermissionButton } from './CameraPermissionButton';
 import { RecordingErrorMessage } from './RecordingErrorMessage';
 import { Tweet } from '../types';
 
-// URL de base de l'API
-const API_URL = 'http://localhost:5002/tweets';
+// URL de base de l'APIs  
+const API_URL = '/api/tweets/tweets';
 
 export function Feed() {
   const { tweets, fetchTweets, isLoading, currentUser } = useStore((state) => ({

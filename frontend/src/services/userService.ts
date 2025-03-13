@@ -1,7 +1,7 @@
 import { User } from '../types';
 
 // URL de base de l'API
-const API_URL = 'http://localhost:3000/api/users';
+const API_URL = '/api/users/users';
 
 // Interface pour la réponse d'authentification
 interface AuthResponse {
@@ -88,70 +88,105 @@ export const getProfile = async (token: string): Promise<User> => {
 
 // Fonction pour mettre à jour le profil
 export const updateProfile = async (token: string, data: UpdateProfileData): Promise<User> => {
-  // Utiliser FormData pour l'envoi des fichiers
-  const formData = new FormData();
-  
-  if (data.username) formData.append('username', data.username);
-  if (data.bio !== undefined) formData.append('bio', data.bio);
-  if (data.profilePicture) formData.append('profilePicture', data.profilePicture);
-  if (data.banner) formData.append('banner', data.banner);
+  try {
+    const payload: any = {};
+    
+    // Ajouter les champs textuels
+    if (data.username) payload.username = data.username;
+    if (data.bio !== undefined) payload.bio = data.bio;
+    
+    // Convertir les fichiers en base64 si présents
+    if (data.profilePicture) {
+      payload.profilePictureBase64 = await fileToBase64(data.profilePicture);
+    }
+    
+    if (data.banner) {
+      payload.bannerBase64 = await fileToBase64(data.banner);
+    }
+    
+    const response = await fetch(`${API_URL}/profile/update`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
 
-  const response = await fetch(`${API_URL}/profile/update`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    },
-    body: formData
-  });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Erreur lors de la mise à jour du profil');
+    }
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Erreur lors de la mise à jour du profil');
+    return response.json().then(data => data.user);
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour du profil:', error);
+    throw error;
   }
+};
 
-  return response.json().then(data => data.user);
+// Fonction pour convertir un fichier en base64
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+  });
 };
 
 // Fonction pour mettre à jour l'image de profil uniquement
 export const updateProfilePicture = async (token: string, file: File): Promise<User> => {
-  const formData = new FormData();
-  formData.append('profilePicture', file);
+  try {
+    // Convertir le fichier en base64
+    const profilePictureBase64 = await fileToBase64(file);
+    
+    const response = await fetch(`${API_URL}/profile/update`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ profilePictureBase64 })
+    });
 
-  const response = await fetch(`${API_URL}/profile/picture`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    },
-    body: formData
-  });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Erreur lors de la mise à jour de l\'image de profil');
+    }
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Erreur lors de la mise à jour de l\'image de profil');
+    return response.json().then(data => data.user);
+  } catch (error) {
+    console.error('Erreur lors de la conversion ou de l\'envoi de l\'image:', error);
+    throw error;
   }
-
-  return response.json().then(data => data.user);
 };
 
 // Fonction pour mettre à jour la bannière uniquement
 export const updateBanner = async (token: string, file: File): Promise<User> => {
-  const formData = new FormData();
-  formData.append('banner', file);
+  try {
+    // Convertir le fichier en base64
+    const bannerBase64 = await fileToBase64(file);
+    
+    const response = await fetch(`${API_URL}/profile/update`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ bannerBase64 })
+    });
 
-  const response = await fetch(`${API_URL}/profile/banner`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    },
-    body: formData
-  });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Erreur lors de la mise à jour de la bannière');
+    }
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Erreur lors de la mise à jour de la bannière');
+    return response.json().then(data => data.user);
+  } catch (error) {
+    console.error('Erreur lors de la conversion ou de l\'envoi de la bannière:', error);
+    throw error;
   }
-
-  return response.json().then(data => data.user);
 };
 
 // Fonction pour récupérer les followers
@@ -203,4 +238,21 @@ export const toggleFollow = async (token: string, userId: string): Promise<{ isF
   }
 
   return response.json();
+};
+
+// Fonction pour récupérer un utilisateur par son ID
+export const getUserById = async (token: string, userId: string): Promise<User> => {
+  const response = await fetch(`${API_URL}/${userId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Erreur lors de la récupération de l\'utilisateur');
+  }
+
+  return response.json().then(data => data.user);
 }; 

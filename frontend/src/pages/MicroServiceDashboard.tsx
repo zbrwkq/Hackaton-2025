@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { notificationWebSocket } from '../services/websocketService';
 
 interface ServiceStatus {
   name: string;
@@ -16,6 +17,37 @@ export function MicroServiceDashboard() {
     { name: 'Service IA', endpoint: 'http://localhost:3000/api/ia/health', status: 'loading' },
     { name: 'Service notifications', endpoint: 'http://localhost:3000/api/notifications/health', status: 'loading' },
   ]);
+  
+  const [wsConnected, setWsConnected] = useState(false);
+  const [wsEvents, setWsEvents] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Vérifier la connexion WebSocket si elle existe
+    const isWsConnected = notificationWebSocket.isConnected();
+    setWsConnected(isWsConnected);
+    
+    // Si un WebSocket est connecté, ajouter des listeners pour les événements
+    if (isWsConnected) {
+      const socket = notificationWebSocket.getSocket();
+      if (socket) {
+        const handleNotification = (data: any) => {
+          console.log("WebSocket notification reçue:", data);
+          setWsEvents(prev => [data, ...prev].slice(0, 5)); // Garder les 5 derniers événements
+        };
+        
+        socket.on('notification', handleNotification);
+        socket.on('updateUsers', (users: string[]) => {
+          console.log("WebSocket: mise à jour des utilisateurs connectés", users);
+          setWsEvents(prev => [{type: 'updateUsers', data: users, time: new Date().toISOString()}, ...prev].slice(0, 5));
+        });
+        
+        return () => {
+          socket.off('notification', handleNotification);
+          socket.off('updateUsers');
+        };
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const checkServiceHealth = async () => {
@@ -68,6 +100,32 @@ export function MicroServiceDashboard() {
           <h1 className="text-3xl font-bold text-indigo-600">TweetAI</h1>
           <h2 className="text-2xl font-bold text-gray-700">Dashboard des Micro-Services</h2>
           <div></div> {/* Élément vide pour centrer le titre */}
+        </div>
+        
+        {/* État de la connexion WebSocket */}
+        <div className="bg-white p-4 rounded-lg shadow mb-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">État de la connexion WebSocket</h2>
+            <div className="flex items-center">
+              <div className={`w-3 h-3 rounded-full mr-2 ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="text-sm">
+                {wsConnected ? 'Connecté' : 'Déconnecté'}
+              </span>
+            </div>
+          </div>
+          
+          {wsEvents.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-medium mb-2">Derniers événements:</h3>
+              <div className="bg-gray-50 p-2 rounded text-xs font-mono max-h-32 overflow-y-auto">
+                {wsEvents.map((event, idx) => (
+                  <div key={idx} className="mb-1 pb-1 border-b border-gray-100">
+                    {JSON.stringify(event)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

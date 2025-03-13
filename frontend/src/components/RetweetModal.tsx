@@ -36,11 +36,19 @@ export function RetweetModal({ isOpen, tweet, onClose, onRetweet }: RetweetModal
 
         <div className="p-3 mb-4 bg-gray-50 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
-            <img
-              src={tweet.user?.profilePicture || 'https://via.placeholder.com/40'}
-              alt={tweet.user?.username}
-              className="w-8 h-8 rounded-full"
-            />
+            {tweet.user?.profilePicture ? (
+              <img
+                src={tweet.user.profilePicture}
+                alt={tweet.user?.username}
+                className="w-8 h-8 rounded-full"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                <span className="text-gray-500 font-bold text-xs">
+                  {tweet.user?.username ? tweet.user.username.charAt(0).toUpperCase() : "?"}
+                </span>
+              </div>
+            )}
             <span className="font-semibold">{tweet.user?.username}</span>
           </div>
           <p className="text-sm text-gray-700">{tweet.content}</p>

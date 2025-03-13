@@ -1,3 +1,4 @@
+
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const cors = require('cors');
@@ -7,7 +8,7 @@ const app = express();
 
 // Activer CORS
 app.use(cors({
-  origin: ['http://localhost', 'http://localhost:80', 'http://localhost:3000'],
+  origin: '*',
   credentials: true
 }));
 
@@ -20,6 +21,7 @@ app.use((req, res, next) => {
 // Définition des services avec les bons chemins pour Docker
 // Les URLs correspondent aux chemins réels exposés par chaque service
 const serviceMap = {
+
   users: "http://users-service:5000",         // Service Users (expose /users)
   tweets: "http://tweets-service:5002",      // Service Tweets (expose /tweets)
   search: "http://search-service:6000",  // Service Search (expose /api/search)
@@ -55,6 +57,7 @@ app.use("/api/:service", (req, res, next) => {
       target,
       changeOrigin: true,
       logLevel: "debug",
+
       pathRewrite: {
         [`^/api/${serviceName}`]: '', // Supprime le préfixe /api et le nom du service
       }
@@ -65,8 +68,9 @@ app.use("/api/:service", (req, res, next) => {
 });
 
 // Démarrer l'API Gateway
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 API Gateway en écoute sur http://localhost:${PORT}`);
-  console.log('🔗 Services enregistrés :', Object.keys(serviceMap));
+  console.log("🔗 Services enregistrés :", Object.keys(serviceMap));
 });

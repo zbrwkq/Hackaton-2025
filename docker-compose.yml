@@ -30,7 +30,7 @@ services:
     container_name: frontend
     restart: always
     ports:
-      - "80:80"    # Exposé directement sur le port 80
+      - "82:82"    # Exposé directement sur le port 80
     networks:
       - api-ntw    # Pour communiquer avec l'API Gateway et les services
     depends_on:
@@ -63,6 +63,7 @@ services:
     environment:
       - MONGODB_URI=mongodb://mongodb:27017/HackatonTwitter
       - SEARCH_SERVICE_PORT=6000
+      - JWT_SECRET=hackaton2025_secretkey_for_jwt_token_generation
     volumes:
       - ./BackEnd/Search:/app
       - /app/node_modules
@@ -82,6 +83,7 @@ services:
     environment:
       - MONGODB_URI=mongodb://mongodb:27017/HackatonTwitter
       - TWEET_SERVICE_PORT=5002
+      - JWT_SECRET=hackaton2025_secretkey_for_jwt_token_generation
     volumes:
       - ./BackEnd/Tweets:/app
       - /app/node_modules
@@ -101,6 +103,7 @@ services:
     environment:
       - MONGODB_URI=mongodb://mongodb:27017/HackatonTwitter
       - PORT=5000
+      - JWT_SECRET=hackaton2025_secretkey_for_jwt_token_generation
     volumes:
       - ./BackEnd/users:/app
       - /app/node_modules
@@ -139,6 +142,7 @@ services:
     environment:
       - MONGODB_URI=mongodb://mongodb:27017/HackatonTwitter
       - NOTIFICATION_SERVICE_PORT=5003
+      - JWT_SECRET=hackaton2025_secretkey_for_jwt_token_generation
     volumes:
       - ./BackEnd/Notification:/app
       - /app/node_modules

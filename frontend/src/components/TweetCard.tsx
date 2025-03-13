@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Heart, MessageCircle, Share2, Bookmark } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Loader, Video, StopCircle } from 'lucide-react';
 import type { Tweet, RetweetData } from '../types';
 import { useStore } from '../store/useStore';
 import { RetweetModal } from './RetweetModal';
 import * as authService from '../services/authService';
+import { Link } from 'react-router-dom';
 
 interface TweetCardProps {
   tweet: Tweet;
@@ -15,23 +16,41 @@ interface TweetCardProps {
 }
 
 // URL de base de l'API
-const API_URL = 'http://localhost:5002/tweets';
+const API_URL = '/api/tweets/tweets';
 
 export function TweetCard({ 
   tweet, 
   hideActions = false, 
   onMediaClick,
-  isFollowing = false,
+  isFollowing: initialIsFollowing = false,
   onToggleFollow
 }: TweetCardProps) {
-  const { currentUser } = useStore();
+  const { currentUser, followUser, loadUserProfile } = useStore(state => ({
+    currentUser: state.currentUser,
+    followUser: state.followUser,
+    loadUserProfile: state.loadUserProfile
+  }));
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [commentContent, setCommentContent] = useState('');
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [showRetweetModal, setShowRetweetModal] = useState(false);
   const [hasRetweeted, setHasRetweeted] = useState(false);
-  const [tweetData, setTweetData] = useState<Tweet>(tweet);
+  const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
+  const [followInProgress, setFollowInProgress] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  
+  // Normaliser les données du tweet pour s'assurer que user est correctement défini
+  const normalizedTweet = { ...tweet };
+  if (!normalizedTweet.user && typeof normalizedTweet.userId === 'object') {
+    // Si userId est un objet (populé par mongoose), l'utiliser comme user
+    normalizedTweet.user = normalizedTweet.userId;
+  }
+  
+  const [tweetData, setTweetData] = useState<Tweet>(normalizedTweet);
 
   // Vérifier si l'utilisateur a déjà liké ou retweeté ce tweet
   useEffect(() => {
@@ -51,16 +70,20 @@ export function TweetCard({
       });
       setHasRetweeted(userHasRetweeted);
     }
-    
-    // Vérifier si le tweet est sauvegardé
-    if (currentUser && tweet.isSavedByUser !== undefined) {
-      setIsBookmarked(tweet.isSavedByUser);
-    } else if (currentUser && tweet.savedBy) {
-      setIsBookmarked(tweet.savedBy.includes(currentUser._id));
+
+    // Vérifier si l'utilisateur a sauvegardé le tweet
+    if (currentUser && tweet.savedBy) {
+      setIsBookmarked(tweet.isSavedByUser || false);
     }
-    
-    setTweetData(tweet);
-  }, [tweet, currentUser]);
+  }, [currentUser, tweet]);
+
+  // Vérifier si l'utilisateur courant suit déjà l'auteur du tweet
+  useEffect(() => {
+    if (currentUser && tweetData.user && tweetData.user._id !== currentUser._id) {
+      const isAlreadyFollowing = currentUser.following.includes(tweetData.user._id);
+      setIsFollowing(isAlreadyFollowing);
+    }
+  }, [currentUser, tweetData.user]);
 
   // Fonction pour liker/unliker un tweet - Appel API direct
   const handleLike = async () => {
@@ -183,23 +206,151 @@ export function TweetCard({
     }
   };
 
+  // Fonction pour suivre/ne plus suivre l'auteur du tweet
+  const handleToggleFollow = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!tweetData.user || !currentUser || tweetData.user._id === currentUser._id) return;
+    
+    try {
+      setFollowInProgress(true);
+      await followUser(tweetData.user._id);
+      
+      // Mettre à jour l'état localement
+      setIsFollowing(prev => !prev);
+      
+      // Recharger le profil de l'utilisateur courant pour mettre à jour la liste des following
+      await loadUserProfile();
+      
+      // Si une fonction onToggleFollow a été fournie, l'appeler également
+      if (onToggleFollow) {
+        onToggleFollow();
+      }
+      
+      setFollowInProgress(false);
+    } catch (error) {
+      console.error('Erreur lors du suivi/désabonnement:', error);
+      setFollowInProgress(false);
+    }
+  };
+
+  // Fonction pour démarrer l'enregistrement vidéo
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      streamRef.current = stream;
+      
+      // Création d'un MediaRecorder qui enregistre directement dans un format que le serveur peut traiter
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+      
+      // Démarrer l'enregistrement immédiatement
+      mediaRecorder.start();
+      setIsRecording(true);
+      
+    } catch (error) {
+      console.error('Erreur lors du démarrage de l\'enregistrement:', error);
+    }
+  };
+
+  // Fonction pour arrêter l'enregistrement et envoyer la vidéo directement
+  const stopRecording = async () => {
+    if (!mediaRecorderRef.current || !streamRef.current || !currentUser) return;
+    
+    try {
+      setIsSendingFeedback(true);
+      
+      // Créer une promesse qui sera résolue lorsque l'enregistrement s'arrête
+      const recordedChunks: Blob[] = [];
+      
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunks.push(event.data);
+        }
+      };
+      
+      // Créer une promesse qui sera résolue lorsque l'enregistrement s'arrête
+      const dataAvailablePromise = new Promise<void>((resolve) => {
+        if (mediaRecorderRef.current) {
+          mediaRecorderRef.current.onstop = () => resolve();
+        }
+      });
+      
+      // Arrêter l'enregistrement
+      mediaRecorderRef.current.stop();
+      
+      // Attendre que les données soient disponibles
+      await dataAvailablePromise;
+      
+      // Créer un objet FormData pour l'envoi au serveur
+      const formData = new FormData();
+      const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+      formData.append('video', videoBlob, 'feedback.webm');
+      formData.append('tweetId', tweet._id);
+      
+      // Envoyer la vidéo au serveur
+      const token = authService.getToken();
+      if (!token) throw new Error('Non authentifié');
+      
+      const response = await fetch(`${API_URL}/${tweet._id}/feedback`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de l\'envoi du feedback');
+      }
+      
+      console.log('Feedback vidéo envoyé avec succès');
+      
+    } catch (error) {
+      console.error('Erreur lors de l\'envoi du feedback:', error);
+    } finally {
+      // Nettoyer les ressources
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
+      mediaRecorderRef.current = null;
+      setIsRecording(false);
+      setIsSendingFeedback(false);
+    }
+  };
+
   return (
     <div className="relative bg-white rounded-2xl p-6 mx-4 my-2 shadow-sm">
       <div className="flex gap-4">
         <div className="flex-shrink-0">
           <div className="relative">
-            <img
-              src={tweetData.user?.profilePicture || 'https://via.placeholder.com/40'}
-              alt={tweetData.user?.username}
-              className="w-12 h-12 rounded-xl object-cover"
-            />
+            <Link to={`/profile/${tweetData.user?._id}`}>
+              {(tweetData.user?.profilePicture) ? (
+                <img
+                  src={tweetData.user.profilePicture}
+                  alt={tweetData.user?.username || "Utilisateur"}
+                  className="w-12 h-12 rounded-xl object-cover"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-gray-200 flex items-center justify-center">
+                  <span className="text-gray-500 font-bold text-lg">
+                    {tweetData.user?.username ? tweetData.user.username.charAt(0).toUpperCase() : "?"}
+                  </span>
+                </div>
+              )}
+            </Link>
             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-lg border-2 border-white" />
           </div>
         </div>
         <div className="flex-1 space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <h3 className="font-semibold text-gray-900">{tweetData.user?.username}</h3>
+              <Link to={`/profile/${tweetData.user?._id}`} className="hover:underline">
+                <h3 className="font-semibold text-gray-900">{tweetData.user?.username}</h3>
+              </Link>
               <p className="text-sm text-gray-500">
                 {new Date(tweetData.createdAt).toLocaleDateString('fr-FR', {
                   month: 'short',
@@ -208,25 +359,26 @@ export function TweetCard({
               </p>
             </div>
             
-            {onToggleFollow && (
+            {/* Bouton de suivi/désabonnement (uniquement si ce n'est pas le tweet de l'utilisateur courant) */}
+            {currentUser && tweetData.user && tweetData.user._id !== currentUser._id && (
               <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleFollow();
-                }}
-                className={`follow-button text-sm font-medium px-3 py-1 rounded-full transition-colors 
+                onClick={handleToggleFollow}
+                disabled={followInProgress}
+                className={`follow-button text-sm font-medium px-3 py-1 rounded-full transition-colors group
                   ${isFollowing 
-                    ? 'following bg-indigo-100 text-indigo-700 hover:bg-red-50' 
+                    ? 'following bg-indigo-100 text-indigo-700 hover:bg-red-50 hover:text-red-600' 
                     : 'bg-indigo-600 text-white hover:bg-indigo-700'
                   }`}
               >
-                {isFollowing ? (
+                {followInProgress ? (
+                  <Loader className="w-3 h-3 animate-spin" />
+                ) : isFollowing ? (
                   <>
-                    <span className="follow-text">Suivi</span>
-                    <span className="unfollow-text hidden">Ne plus suivre</span>
+                    <span className="group-hover:hidden">Abonné</span>
+                    <span className="hidden group-hover:inline">Se désabonner</span>
                   </>
                 ) : (
-                  'Suivre'
+                  "S'abonner"
                 )}
               </button>
             )}
@@ -305,6 +457,24 @@ export function TweetCard({
                   onClick={handleBookmark}
                 >
                   <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current' : ''}`} />
+                </button>
+                <button
+                  className={`flex items-center gap-2 transition-colors ${
+                    isRecording ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
+                  }`}
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={isSendingFeedback}
+                >
+                  {isSendingFeedback ? (
+                    <Loader className="w-5 h-5 animate-spin" />
+                  ) : isRecording ? (
+                    <StopCircle className="w-5 h-5" />
+                  ) : (
+                    <Video className="w-5 h-5" />
+                  )}
+                  <span className="text-sm font-medium">
+                    {isSendingFeedback ? 'Envoi...' : isRecording ? 'Arrêter' : 'Feedback'}
+                  </span>
                 </button>
               </div>
 

@@ -68,6 +68,23 @@ exports.getProfile = async (req, res) => {
     }
 };
 
+// Obtenir le profil d'un utilisateur spécifique par son ID
+exports.getUserById = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const user = await User.findById(userId).select("-password -mail");
+        
+        if (!user) {
+            return res.status(404).json({ message: "Utilisateur non trouvé" });
+        }
+        
+        res.json({ user });
+    } catch (error) {
+        console.error("Erreur lors de la récupération du profil:", error);
+        res.status(500).json({ message: "Erreur serveur", error: error.message });
+    }
+};
+
 // Suivre/Ne plus suivre un utilisateur
 exports.toggleFollow = async (req, res) => {
     try {
@@ -182,11 +199,20 @@ exports.updateProfile = async (req, res) => {
         const updates = {};
         
         // Récupérer les champs basiques à mettre à jour
-        const { username, bio } = req.body;
+        const { username, bio, profilePictureBase64, bannerBase64 } = req.body;
         if (username) updates.username = username;
         if (bio !== undefined) updates.bio = bio;
         
-        // Gestion des fichiers uploadés
+        // Traitement des images base64
+        if (profilePictureBase64) {
+            updates.profilePicture = profilePictureBase64;
+        }
+        
+        if (bannerBase64) {
+            updates.banner = bannerBase64;
+        }
+        
+        // Gestion des fichiers uploadés (méthode traditionnelle)
         if (req.files) {
             // Photo de profil
             if (req.files.profilePicture) {
