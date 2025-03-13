@@ -20,9 +20,13 @@ app = Flask(__name__)
 app.config.from_object(config)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
+# Define base directory for models - this ensures we use absolute paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODELS_DIR = os.path.join(BASE_DIR, 'models')
+
 class_names = ['Angry', 'Disgusted', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
-emo_model = load_model('models/face_model.h5')
-kmeans_model = joblib.load('models/kmeans_model.pkl')
+emo_model = load_model(os.path.join(MODELS_DIR, 'face_model.h5'))
+kmeans_model = joblib.load(os.path.join(MODELS_DIR, 'kmeans_model.pkl'))
 bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 bert_model = BertModel.from_pretrained('bert-base-uncased')
 
@@ -84,7 +88,7 @@ def get_emotions():
     
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        filepath = os.path.join(os.path.join(BASE_DIR, app.config['UPLOAD_FOLDER']), filename)
         file.save(filepath)
         
 
@@ -202,7 +206,9 @@ def get_clusters():
         return jsonify({"error": str(e)}), 500
         
 if __name__ == '__main__':
-    os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
+    # Use absolute path for upload folder
+    upload_folder = os.path.join(BASE_DIR, config.UPLOAD_FOLDER)
+    os.makedirs(upload_folder, exist_ok=True)
     app.run(debug=config.DEBUG, port=config.PORT)
 
 

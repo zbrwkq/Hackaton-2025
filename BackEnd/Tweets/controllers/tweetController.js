@@ -97,7 +97,7 @@ exports.getAllTweetsFromUser = async (req, res) => {
 // Obtenir tous les tweets
 exports.getAllTweets = async (req, res) => {
   try {
-    const { category } = req.query; // Ajout du filtre par catégorie
+    const { category, limit } = req.query; // Ajout du filtre par catégorie et limite
 
     // Construire le filtre
     const filter = {};
@@ -105,7 +105,11 @@ exports.getAllTweets = async (req, res) => {
       filter.category = category;
     }
 
-    const tweets = await Tweet.find(filter)
+    // Convertir la limite en nombre si elle existe
+    const limitValue = limit ? parseInt(limit) : null;
+
+    // Utiliser la méthode limit de Mongoose pour limiter les résultats
+    let query = Tweet.find(filter)
       .populate("userId", "username profilePicture")
       .populate("mentions", "username profilePicture")
       .populate("likes", "username profilePicture")
@@ -122,8 +126,14 @@ exports.getAllTweets = async (req, res) => {
         path: "retweets.userId",
         select: "username profilePicture",
       })
-      .sort({ createdAt: -1 })
-      .exec();
+      .sort({ createdAt: -1 });
+
+    // Appliquer la limite si elle est spécifiée
+    if (limitValue) {
+      query = query.limit(limitValue);
+    }
+
+    const tweets = await query.exec();
 
     // Ajouter un champ pour indiquer si le tweet est sauvegardé par l'utilisateur actuel
     const tweetsWithSaveStatus = tweets.map((tweet) => {

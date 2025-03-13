@@ -13,7 +13,7 @@ interface CreateTweetData {
 }
 
 // Obtenir tous les tweets
-export const getAllTweets = async (userId?: string): Promise<Tweet[]> => {
+export const getAllTweets = async (userId?: string, limit: number = 4): Promise<Tweet[]> => {
   const token = authService.getToken();
   if (!token) throw new Error('Non authentifié');
 
@@ -21,6 +21,9 @@ export const getAllTweets = async (userId?: string): Promise<Tweet[]> => {
   if (userId) {
     url = `${API_URL}/user/${userId}`;
   }
+  
+  // Ajouter le paramètre de limite
+  url += `?limit=${limit}`;
 
   const response = await fetch(url, {
     method: 'GET',
@@ -277,4 +280,50 @@ export const retweetTweet = async (tweetId: string, content?: string): Promise<T
 // Commenter un tweet
 export const commentTweet = async (tweetId: string, content: string): Promise<Tweet> => {
   return addComment(tweetId, content);
+};
+
+// Générer des données fictives
+export const generateFakeData = async (): Promise<{ message: string }> => {
+  const token = authService.getToken();
+  if (!token) throw new Error('Non authentifié');
+
+  const response = await fetch(`${API_URL}/fake-data`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Erreur lors de la génération des données fictives');
+  }
+
+  return response.json();
+};
+
+// Envoyer feedback et recevoir un tweet recommandé
+export const sendFeedback = async (tweetId: string, file: File): Promise<Tweet> => {
+  const token = authService.getToken();
+  if (!token) throw new Error('Non authentifié');
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('tweetId', tweetId);
+
+  const response = await fetch(`${API_URL}/feedback`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    body: formData
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Erreur lors de l\'envoi du feedback');
+  }
+
+  const data = await response.json();
+  return data.nextTweet;
 }; 

@@ -4,6 +4,11 @@
  * pour l'analyse des expressions faciales
  */
 
+
+import * as authService from './authService';
+import * as tweetService from './tweetService';
+import { useStore } from '../store/useStore';
+
 const API_URL = 'http://localhost:3000/api/tweets/tweets'; // Remplacer par l'URL de votre API
 
 
@@ -75,48 +80,34 @@ export async function sendVideoForAnalysis(data: EmotionData): Promise<void> {
       return;
     }
 
-    // Créer un objet FormData pour envoyer le fichier
-    const formData = new FormData();
-    formData.append("tweetId", data.tweetId);
-    formData.append(
-      "file",
-      data.videoBlob,
-      `tweet_${data.tweetId}_${Date.now()}.webm`
+    // Créer un fichier à partir du blob
+    const videoFile = new File(
+      [data.videoBlob], 
+      `tweet_${data.tweetId}_${Date.now()}.webm`,
+      { type: 'video/webm' }
     );
 
-    // Envoyer les données au serveur avec un timeout pour éviter les blocages
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 secondes timeout
-
     try {
-      const response = await fetch(`${API_URL}/feedback`, {
-        method: "POST",
-        body: formData,
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ message: "Erreur inconnue" }));
-        throw new Error(
-          `Erreur lors de l'envoi de la vidéo: ${
-            errorData.message || response.statusText
-          }`
-        );
+      // Utiliser la fonction sendFeedback du service tweets
+      const nextTweet = await tweetService.sendFeedback(data.tweetId, videoFile);
+      
+      // Ajouter le nouveau tweet à la liste des tweets dans le store
+      const { tweets } = useStore.getState();
+      
+      // Vérifier si le tweet existe déjà dans la liste
+      const tweetExists = tweets.some(t => t._id === nextTweet._id);
+      
+      if (!tweetExists) {
+        // Mettre à jour le store avec le nouveau tweet
+        useStore.setState({
+          tweets: [nextTweet, ...tweets]
+        });
       }
-
-      // Traiter la réponse si nécessaire
-      const result = await response.json();
-      console.log("Analyse des émotions reçue:", result);
-    } catch (fetchError: unknown) {
-      if (fetchError instanceof Error && fetchError.name === "AbortError") {
-        console.error("Délai d'attente dépassé lors de l'envoi de la vidéo");
-      } else {
-        throw fetchError;
-      }
+      
+      console.log("Recommandation reçue du serveur:", nextTweet);
+    } catch (fetchError) {
+      console.error("Erreur lors de l'envoi du feedback:", fetchError);
+      throw fetchError;
     }
   } catch (error) {
     console.error("Erreur lors de l'envoi de la vidéo pour analyse:", error);
