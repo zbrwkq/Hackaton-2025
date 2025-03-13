@@ -1,6 +1,6 @@
 import { getAuthHeader } from './authService';
 
-const API_URL = 'http://localhost:3000/api/search';
+const API_URL = '/api/search/search';
 
 export interface SearchParams {
   q?: string;                 // Terme de recherche

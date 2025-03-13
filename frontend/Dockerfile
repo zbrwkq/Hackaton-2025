@@ -28,7 +28,7 @@ RUN rm -rf /etc/nginx/conf.d/default.conf
 
 # Configuration de base pour Nginx qui fonctionne avec les SPA et proxy vers l'API Gateway
 RUN echo 'server { \
-    listen 80; \
+    listen 82; \
     location / { \
         root /usr/share/nginx/html; \
         index index.html; \
@@ -52,6 +52,6 @@ RUN echo 'server { \
     } \
 }' > /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+EXPOSE 82
 
 CMD ["nginx", "-g", "daemon off;"] 

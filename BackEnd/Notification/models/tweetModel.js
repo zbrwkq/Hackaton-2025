@@ -14,7 +14,9 @@ const tweetSchema = new mongoose.Schema({
         type: String,
         validate: {
             validator: function(url) {
-                return /^(http|https):\/\/[^ "]+$/.test(url);
+                // Accepte à la fois les URLs http/https et les données base64
+                return /^(http|https):\/\/[^ "]+$/.test(url) || 
+                       /^data:image\/(jpeg|jpg|png|gif|webp);base64,/.test(url);
             },
             message: 'URL invalide'
         }

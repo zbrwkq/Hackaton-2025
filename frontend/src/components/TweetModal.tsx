@@ -52,6 +52,16 @@ export const TweetModal = ({ onClose }: TweetModalProps) => {
     setMediaPreview(newMediaPreview);
   };
 
+  // Fonction pour convertir un fichier en base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
   const handleSubmit = async () => {
     if (!content.trim() && mediaFiles.length === 0) return;
     
@@ -64,9 +74,8 @@ export const TweetModal = ({ onClose }: TweetModalProps) => {
       // Extraire les mentions
       const mentions = content.match(/@(\w+)/g)?.map(mention => mention.substring(1)) || [];
       
-      // Convertir les fichiers en base64 ou upload vers un service de stockage
-      // Pour simplifier, nous utiliserons des URLs directes dans cet exemple
-      const mediaUrls = mediaPreview;
+      // Convertir les fichiers en base64 pour l'envoi au serveur
+      const mediaUrls = await Promise.all(mediaFiles.map(file => fileToBase64(file)));
       
       await createTweet(content, mediaUrls, hashtags, mentions);
       
